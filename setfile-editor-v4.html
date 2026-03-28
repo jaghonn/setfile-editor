@@ -737,7 +737,8 @@ function parseChrFile(text) {
 function buildParamMap(parsed) {
   const map = {};
   parsed.forEach(l => {
-    if (l.type === 'param' || l.type === 'simple') map[l.key] = l;
+    if ((l.type === 'param' || l.type === 'simple') && !(l.key in map))
+      map[l.key] = l;   // keep first occurrence only
   });
   return map;
 }
@@ -1049,6 +1050,7 @@ function removeFile(id) {
 
 // ── SAVE ─────────────────────────────────────────────────
 function collectFileContent(file) {
+  const written = new Set();
   return file.parsed.map(line => {
     if (line.type === 'param') {
       const inp = document.getElementById(`inp_${file.id}_${line.key}`);
@@ -1057,8 +1059,12 @@ function collectFileContent(file) {
       return `${line.key}=${val}||${line.def}||${line.mn}||${line.mx}||${line.opt ? 'Y' : 'N'}`;
     }
     if (line.type === 'simple') {
+      // Only update the first occurrence — subsequent duplicates (e.g. <indicator>
+      // block in .chr files sharing keys with <expert>) are preserved as-is.
+      if (written.has(line.key)) return line.raw;
       const inp = document.getElementById(`inp_${file.id}_${line.key}`);
       if (!inp) return line.raw;
+      written.add(line.key);
       const val = inp.type === 'checkbox' ? (inp.checked ? 'true' : 'false') : inp.value;
       return `${line.key}=${val}`;
     }

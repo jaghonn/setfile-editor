@@ -557,7 +557,7 @@ td.diff-cell .toggle-val { color: var(--diff); }
     <span style="font-size:10px;color:var(--text-muted)">Modified by <a href="https://t.me/Jaghonn" target="_blank" style="color:var(--text-dim);text-decoration:none;">t.me/Jaghonn</a></span>
   </div>
   <button class="btn btn-ghost" id="theme-btn" onclick="toggleTheme()" title="Switch to light theme" style="padding:6px 10px;"></button>
-  <input type="file" id="file-input" accept=".set" multiple onchange="addFiles(this)">
+  <input type="file" id="file-input" accept=".set,.chr" multiple onchange="addFiles(this)">
 </div>
 
 <!-- TOOLBAR -->
@@ -609,8 +609,8 @@ td.diff-cell .toggle-val { color: var(--diff); }
     <line x1="12" y1="18" x2="12" y2="12"/>
     <line x1="9" y1="15" x2="15" y2="15"/>
   </svg>
-  <h2>Drop .set files here</h2>
-  <p>or click to choose files — open multiple files to compare & edit side by side</p>
+  <h2>Drop .set or .chr files here</h2>
+  <p>or click to choose files — open multiple files to compare &amp; edit side by side</p>
   <button class="btn btn-accent" style="margin-top:4px" onclick="document.getElementById('file-input').click()">Choose Files</button>
 </div>
 
@@ -647,9 +647,10 @@ function addFiles(input) {
     reader.onload = e => {
       const buffer = e.target.result;
       const decoded = decodeBuffer(buffer);
-      const parsed = parseSetFile(decoded);
+      const isChr   = file.name.toLowerCase().endsWith('.chr');
+      const parsed  = isChr ? parseChrFile(decoded) : parseSetFile(decoded);
       const paramMap = buildParamMap(parsed);
-      files[startIndex + i] = { id: `f${Date.now()}_${Math.random()}`, name: file.name, buffer, parsed, paramMap, changes: new Set() };
+      files[startIndex + i] = { id: `f${Date.now()}_${Math.random()}`, name: file.name, fileType: isChr ? 'chr' : 'set', buffer, parsed, paramMap, changes: new Set() };
       loadingNames.delete(file.name);
       pending--;
       if (pending === 0) rebuildAll();
@@ -697,6 +698,40 @@ function parseSetFile(text) {
 
 function extractTitle(s) {
   return s.trim().replace(/^-+\s*/, '').replace(/\s*-+$/, '').trim();
+}
+
+// ── CHR PARSER ────────────────────────────────────────────
+function parseChrFile(text) {
+  return text.split(/\r?\n/).map((raw, idx) => {
+    const line = raw.trim();
+    if (!line) return { type: 'empty', raw, idx };
+
+    // XML closing tag  </expert>  → preserved as-is
+    if (line.startsWith('</') && line.endsWith('>'))
+      return { type: 'tag', raw, idx };
+
+    // XML opening tag  <inputs>  → section header
+    if (line.startsWith('<') && line.endsWith('>')) {
+      const tag = line.slice(1, -1).toUpperCase();
+      return { type: 'section', raw, idx, key: `_tag_${line}`, title: tag };
+    }
+
+    const eq = line.indexOf('=');
+    if (eq === -1) return { type: 'unknown', raw, idx };
+
+    const key   = line.slice(0, eq).trim();
+    const value = line.slice(eq + 1);
+
+    // Empty key  (the `=` separator lines in trading-hours blocks)
+    if (!key) return { type: 'empty', raw, idx };
+
+    // Section separator banner  (key=--- text ---)
+    if (value.trim().match(/^-{3,}/))
+      return { type: 'section', raw, idx, key, title: extractTitle(value) || key };
+
+    const isBoolean = value === 'true' || value === 'false';
+    return { type: 'simple', raw, idx, key, value, isBoolean };
+  });
 }
 
 function buildParamMap(parsed) {
@@ -1023,7 +1058,9 @@ function collectFileContent(file) {
     }
     if (line.type === 'simple') {
       const inp = document.getElementById(`inp_${file.id}_${line.key}`);
-      return inp ? `${line.key}=${inp.value}` : line.raw;
+      if (!inp) return line.raw;
+      const val = inp.type === 'checkbox' ? (inp.checked ? 'true' : 'false') : inp.value;
+      return `${line.key}=${val}`;
     }
     return line.raw;
   }).join('\r\n');
@@ -1167,7 +1204,7 @@ dz.addEventListener('drop', e => {
   const input = document.getElementById('file-input');
   // Simulate file selection via DataTransfer
   const dt = new DataTransfer();
-  Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.set')).forEach(f => dt.items.add(f));
+  Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.set') || f.name.endsWith('.chr')).forEach(f => dt.items.add(f));
   if (dt.files.length > 0) {
     input.files = dt.files;
     addFiles(input);
@@ -1178,7 +1215,7 @@ dz.addEventListener('drop', e => {
 document.addEventListener('dragover', e => e.preventDefault());
 document.addEventListener('drop', e => {
   e.preventDefault();
-  const setFiles = Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.set'));
+  const setFiles = Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.set') || f.name.endsWith('.chr'));
   if (setFiles.length === 0) return;
   const dt = new DataTransfer();
   setFiles.forEach(f => dt.items.add(f));

@@ -68,6 +68,29 @@ body {
   transition: background 0.2s, color 0.2s;
 }
 
+/* ── TABS ────────────────────────────────────────────── */
+.tab-group {
+  display: flex;
+  align-items: stretch;
+  height: 52px;
+  margin-left: -16px; /* flush with topbar edge */
+}
+.tab-btn {
+  padding: 0 18px;
+  height: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+.tab-btn:hover { color: var(--text); background: var(--surface2); }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
 /* ── HEADER ─────────────────────────────────────────── */
 #topbar {
   height: 52px;
@@ -82,12 +105,6 @@ body {
   z-index: 200;
 }
 
-#topbar h1 {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--accent);
-  margin-right: 8px;
-}
 
 .sep { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
 .spacer { flex: 1; }
@@ -303,7 +320,15 @@ tr.param-row {
   transition: background 0.1s;
 }
 tr.param-row:hover { background: var(--row-hover-bg); }
-tr.param-row.hidden { display: none; }
+tr.param-row.hidden  { display: none; }
+tr.section-row.hidden { display: none; }
+
+/* Profile Creator — section block headers */
+tr.section-row[data-chr-block="chart"] td { border-top-color: #2d7aff; color: #2d7aff; }
+tr.section-row[data-chr-block="expert"] td { border-top-color: var(--gold); color: var(--gold); }
+tr.section-row[data-chr-block="window"],
+tr.section-row[data-chr-block="indicator"] { opacity: 0.6; }
+[data-theme="light"] tr.section-row[data-chr-block="chart"] td { border-top-color: #1a5ccc; color: #1a5ccc; }
 
 tr.param-row td {
   border-right: 1px solid var(--border);
@@ -539,7 +564,10 @@ td.diff-cell .toggle-val { color: var(--diff); }
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>MT5 Set Editor</h1>
+  <div class="tab-group">
+    <button class="tab-btn active" data-tab="set"     onclick="switchTab('set')">MT5 Set Editor</button>
+    <button class="tab-btn"        data-tab="profile" onclick="switchTab('profile')">Profile Creator</button>
+  </div>
   <div class="sep"></div>
   <button class="btn btn-accent" onclick="document.getElementById('file-input').click()">
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -650,6 +678,7 @@ function addFiles(input) {
       const isChr   = file.name.toLowerCase().endsWith('.chr');
       const parsed  = isChr ? parseChrFile(decoded) : parseSetFile(decoded);
       const paramMap = buildParamMap(parsed);
+      if (isChr) autoSwitchToProfile = true;
       files[startIndex + i] = { id: `f${Date.now()}_${Math.random()}`, name: file.name, fileType: isChr ? 'chr' : 'set', buffer, parsed, paramMap, changes: new Set() };
       loadingNames.delete(file.name);
       pending--;
@@ -702,35 +731,36 @@ function extractTitle(s) {
 
 // ── CHR PARSER ────────────────────────────────────────────
 function parseChrFile(text) {
+  let block = 'chart'; // current structural block
   return text.split(/\r?\n/).map((raw, idx) => {
     const line = raw.trim();
-    if (!line) return { type: 'empty', raw, idx };
+    if (!line) return { type: 'empty', raw, idx, chrBlock: block };
 
     // XML closing tag  </expert>  → preserved as-is
     if (line.startsWith('</') && line.endsWith('>'))
-      return { type: 'tag', raw, idx };
+      return { type: 'tag', raw, idx, chrBlock: block };
 
-    // XML opening tag  <inputs>  → section header
+    // XML opening tag  <inputs>  → section header + update block
     if (line.startsWith('<') && line.endsWith('>')) {
-      const tag = line.slice(1, -1).toUpperCase();
-      return { type: 'section', raw, idx, key: `_tag_${line}`, title: tag };
+      block = line.slice(1, -1).toLowerCase();
+      return { type: 'section', raw, idx, key: `_tag_${line}`, title: block.toUpperCase(), chrBlock: block };
     }
 
     const eq = line.indexOf('=');
-    if (eq === -1) return { type: 'unknown', raw, idx };
+    if (eq === -1) return { type: 'unknown', raw, idx, chrBlock: block };
 
     const key   = line.slice(0, eq).trim();
     const value = line.slice(eq + 1);
 
     // Empty key  (the `=` separator lines in trading-hours blocks)
-    if (!key) return { type: 'empty', raw, idx };
+    if (!key) return { type: 'empty', raw, idx, chrBlock: block };
 
     // Section separator banner  (key=--- text ---)
     if (value.trim().match(/^-{3,}/))
-      return { type: 'section', raw, idx, key, title: extractTitle(value) || key };
+      return { type: 'section', raw, idx, key, title: extractTitle(value) || key, chrBlock: block };
 
     const isBoolean = value === 'true' || value === 'false';
-    return { type: 'simple', raw, idx, key, value, isBoolean };
+    return { type: 'simple', raw, idx, key, value, isBoolean, chrBlock: block };
   });
 }
 
@@ -776,6 +806,14 @@ function rebuildAll() {
   document.getElementById('save-all-btn').disabled = false;
   document.getElementById('reset-btn').style.display = 'flex';
 
+  if (autoSwitchToProfile) {
+    currentTab = 'profile';
+    document.querySelectorAll('.tab-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.tab === 'profile')
+    );
+    autoSwitchToProfile = false;
+  }
+
   buildHeader();
   buildBody();
   applyFilters();
@@ -814,6 +852,7 @@ function buildBody() {
       const tr = document.createElement('tr');
       tr.className = 'section-row';
       tr.dataset.section = row.key;
+      tr.dataset.chrBlock = row.chrBlock || '';
       const td = document.createElement('td');
       td.colSpan = files.length + 1;
       td.textContent = row.title || row.key;
@@ -828,6 +867,7 @@ function buildBody() {
     tr.className = 'param-row';
     tr.dataset.key = row.key.toLowerCase();
     tr.id = `row_${row.key}`;
+    tr.dataset.chrBlock = row.chrBlock || '';
 
     // Label cell
     const labelTd = document.createElement('td');
@@ -958,7 +998,16 @@ function applyFilters() {
   const q = document.getElementById('search').value.toLowerCase();
   let visibleDiff = 0;
 
+  // Section rows: hide chr non-inputs blocks in Set Editor tab
+  document.querySelectorAll('.section-row').forEach(tr => {
+    const cb = tr.dataset.chrBlock || '';
+    tr.classList.toggle('hidden', isChrNonInputsBlock(cb));
+  });
+
   document.querySelectorAll('.param-row').forEach(tr => {
+    const cb = tr.dataset.chrBlock || '';
+    if (isChrNonInputsBlock(cb)) { tr.classList.add('hidden'); return; }
+
     const key = tr.dataset.key || '';
     const matchSearch = !q || key.includes(q);
     const matchDiff = !diffOnly || tr.dataset.hasDiff === '1';
@@ -969,6 +1018,12 @@ function applyFilters() {
 
   document.getElementById('no-diff').style.display =
     diffOnly && visibleDiff === 0 ? 'block' : 'none';
+}
+
+// Returns true when a chrBlock should be hidden in the current tab
+function isChrNonInputsBlock(block) {
+  if (!block || block === 'inputs') return false;          // inputs / .set rows → always visible
+  return currentTab === 'set';                             // hide in Set Editor, show in Profile Creator
 }
 
 function toggleDiffOnly() {
@@ -1387,6 +1442,19 @@ function updateTableHeight() {
     if (recap.style.display    !== 'none') h += recap.offsetHeight;
     wrap.style.height = `calc(100vh - ${h}px)`;
   });
+}
+
+// ── TABS ──────────────────────────────────────────────────
+let currentTab = 'set';
+let autoSwitchToProfile = false;
+
+function switchTab(tab) {
+  if (currentTab === tab) return;
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.tab === tab)
+  );
+  applyFilters();
 }
 
 // ── THEME ─────────────────────────────────────────────────

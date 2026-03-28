@@ -90,6 +90,12 @@ body {
 }
 .tab-btn:hover { color: var(--text); background: var(--surface2); }
 .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-btn[data-tab="set"].active    { color: var(--green);  border-bottom-color: var(--green); }
+.tab-btn[data-tab="profile"].active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* Show/hide save buttons per active tab */
+body.tab-set     .btn-tab-chr { display: none !important; }
+body.tab-profile .btn-tab-set { display: none !important; }
 
 /* ── HEADER ─────────────────────────────────────────── */
 #topbar {
@@ -587,17 +593,17 @@ td.diff-cell .toggle-val { color: var(--diff); }
     Add Files
   </button>
   <button class="btn btn-ghost" id="reset-btn" onclick="resetAll()" style="display:none">Reset</button>
-  <button class="btn btn-save" id="save-all-btn" onclick="saveAll()" disabled>
+  <button class="btn btn-save btn-tab-set" id="save-all-btn" onclick="saveAll()" disabled>
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
     Save All .set
   </button>
-  <button class="btn btn-chr" id="save-all-chr-btn" onclick="saveAllChr()" disabled>
+  <button class="btn btn-chr btn-tab-chr" id="save-all-chr-btn" onclick="saveAllChr()" disabled>
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
     Save All .chr
   </button>
   <div class="spacer"></div>
   <span class="badge badge-gold" id="changes-badge" style="display:none">0 changes</span>
-  <span style="font-size:10px;color:var(--text-muted);margin-right:4px">v5.8</span>
+  <span style="font-size:10px;color:var(--text-muted);margin-right:4px">v5.9</span>
   <div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end">
     <span style="font-size:10px;color:var(--text-muted)">Created by <a href="https://t.me/basa2021" target="_blank" style="color:var(--text-dim);text-decoration:none;">t.me/basa2021</a></span>
     <span style="font-size:10px;color:var(--text-muted)">Modified by <a href="https://t.me/Jaghonn" target="_blank" style="color:var(--text-dim);text-decoration:none;">t.me/Jaghonn</a></span>
@@ -868,8 +874,8 @@ function buildHeader() {
     th.innerHTML = `<div class="th-inner">
       <span class="th-filename" id="fn_${file.id}" title="Click to rename" onclick="startRename('${file.id}')">${file.name}</span>
       <div class="th-actions">
-        <button class="btn-tiny btn-tiny-save" onclick="saveFile('${file.id}')">Save .set</button>
-        <button class="btn-tiny btn-tiny-chr"  onclick="saveChrFile('${file.id}')">Save .chr</button>
+        <button class="btn-tiny btn-tiny-save btn-tab-set" onclick="saveFile('${file.id}')">Save .set</button>
+        <button class="btn-tiny btn-tiny-chr  btn-tab-chr" onclick="saveChrFile('${file.id}')">Save .chr</button>
         <button class="btn-tiny btn-tiny-remove" onclick="removeFile('${file.id}')">✕</button>
         <span class="th-change-count" id="cc_${file.id}" style="display:none"></span>
       </div>
@@ -1589,6 +1595,7 @@ const PROFILE_EXPERT_DEFAULTS = [
 
 // ── TABS ──────────────────────────────────────────────────
 let currentTab = 'set';
+document.body.classList.add('tab-set');
 let autoSwitchToProfile = false;
 
 function switchTab(tab) {
@@ -1597,6 +1604,8 @@ function switchTab(tab) {
   document.querySelectorAll('.tab-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.tab === tab)
   );
+  document.body.classList.toggle('tab-set',     tab === 'set');
+  document.body.classList.toggle('tab-profile', tab === 'profile');
   if (files.length === 0) return;
 
   // Only rebuild DOM when switching to Profile Creator for the first time

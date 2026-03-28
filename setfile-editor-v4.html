@@ -1318,6 +1318,11 @@ function updateParamDatalist() {
   dl.innerHTML = '';
   const allKeys = new Set();
   files.forEach(f => Object.keys(f.paramMap).forEach(k => allKeys.add(k)));
+  // Also include virtual profile keys (CHART + EXPERT defaults) when in profile tab without .chr
+  if (currentTab === 'profile' && !files.some(f => f.fileType === 'chr')) {
+    PROFILE_CHART_DEFAULTS.forEach(([k]) => allKeys.add(k));
+    PROFILE_EXPERT_DEFAULTS.forEach(([k]) => allKeys.add(k));
+  }
   [...allKeys].sort().forEach(k => {
     const opt = document.createElement('option');
     opt.value = k;
@@ -1353,12 +1358,12 @@ function batchApply(forceDryRun) {
 
   files.forEach(file => {
     const paramLine = file.paramMap[paramName];
-    if (!paramLine) {
+    // Also consider virtual profile rows (CHART/EXPERT defaults) present in the table
+    const inp = document.getElementById(`inp_${file.id}_${paramName}`);
+    if (!paramLine && !inp) {
       results.push({ file, status: 'absent' });
       return;
     }
-
-    const inp = document.getElementById(`inp_${file.id}_${paramName}`);
     const currentValue = inp
       ? (inp.type === 'checkbox' ? (inp.checked ? 'true' : 'false') : inp.value)
       : String(paramLine.value);

@@ -184,7 +184,7 @@ input[type=file] { display: none; }
 #table-wrap {
   display: none;
   overflow: auto;
-  height: calc(100vh - 92px);
+  height: calc(100vh - 136px);
 }
 
 table {
@@ -421,6 +421,118 @@ td.diff-cell .toggle-val { color: var(--diff); }
   color: var(--text-dim);
   font-size: 14px;
 }
+
+/* ── BATCH TOOLBAR ───────────────────────────────────── */
+#batch-toolbar {
+  height: 44px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border2);
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  position: sticky;
+  top: 92px;
+  z-index: 198;
+}
+
+#batch-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.batch-input {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 4px 10px;
+  font-size: 12px;
+  font-family: inherit;
+  height: 28px;
+}
+.batch-input:focus { outline: none; border-color: var(--accent); }
+
+#batch-param      { width: 200px; }
+#batch-value      { width: 140px; }
+#batch-value-bool { width: 140px; display: none;
+                    appearance: none; cursor: pointer; }
+
+.btn-patch { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+.btn-patch:hover { background: var(--accent); color: #fff; }
+
+.dryrun-wrap {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 12px; color: var(--text-dim);
+  cursor: pointer; user-select: none; margin-left: 4px;
+}
+.dryrun-wrap input { cursor: pointer; accent-color: var(--accent); }
+
+/* ── RECAP PANEL ─────────────────────────────────────── */
+#recap-panel {
+  display: none;
+  background: var(--surface);
+  border-bottom: 2px solid var(--border2);
+  position: sticky;
+  top: 136px;
+  z-index: 197;
+  max-height: 190px;
+  overflow-y: auto;
+}
+
+#recap-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 1;
+}
+
+#recap-summary { font-size: 12px; font-weight: 600; flex: 1; }
+#recap-summary.ok   { color: var(--green); }
+#recap-summary.warn { color: var(--text-dim); }
+#recap-summary.dry  { color: var(--accent); }
+
+.btn-undo {
+  background: var(--gold-dim); color: var(--gold);
+  border: 1px solid var(--gold); border-radius: 4px;
+  padding: 2px 10px; font-size: 11px; font-weight: 600;
+  cursor: pointer; transition: all 0.12s; display: none;
+}
+.btn-undo:hover { background: var(--gold); color: #000; }
+
+.recap-close {
+  background: transparent; border: none;
+  color: var(--text-muted); cursor: pointer;
+  font-size: 16px; line-height: 1; padding: 0 2px;
+}
+.recap-close:hover { color: var(--text); }
+
+.recap-row {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 16px;
+  font-size: 11px;
+  border-bottom: 1px solid var(--border);
+}
+.recap-row:last-child { border-bottom: none; }
+.recap-row.modified { background: rgba(240,180,41,0.04); }
+.recap-row.skipped  { opacity: 0.55; }
+
+.rr-icon { text-align: center; font-size: 12px; }
+.rr-file { font-family: 'SF Mono','JetBrains Mono',monospace; color: var(--text);
+           overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rr-change { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.rr-old  { color: var(--text-dim); font-family: monospace; }
+.rr-arr  { color: var(--text-muted); }
+.rr-new  { color: var(--gold); font-family: monospace; font-weight: 600; }
+.rr-skip { color: var(--text-muted); font-style: italic; }
 </style>
 </head>
 <body>
@@ -450,6 +562,40 @@ td.diff-cell .toggle-val { color: var(--diff); }
   <input type="text" id="search" placeholder="Search params…" oninput="applyFilters()">
   <button class="toggle-btn" id="diff-btn" onclick="toggleDiffOnly()">Show differences only</button>
   <span id="diff-count"></span>
+</div>
+
+<!-- BATCH TOOLBAR -->
+<div id="batch-toolbar">
+  <span id="batch-label">Batch Edit</span>
+  <div class="sep"></div>
+  <input list="batch-param-list" class="batch-input" id="batch-param"
+    placeholder="Parameter name…" autocomplete="off"
+    oninput="onBatchParamInput()" onchange="onBatchParamInput()"
+    onkeydown="if(event.key==='Enter')batchApply(false)">
+  <datalist id="batch-param-list"></datalist>
+  <input type="text" class="batch-input" id="batch-value" placeholder="New value…"
+    onkeydown="if(event.key==='Enter')batchApply(false)">
+  <select class="batch-input" id="batch-value-bool">
+    <option value="true">true</option>
+    <option value="false">false</option>
+  </select>
+  <button class="btn btn-patch" onclick="batchApply(false)">
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+    Apply to all
+  </button>
+  <label class="dryrun-wrap" title="Simulate without applying changes">
+    <input type="checkbox" id="batch-dryrun"> Dry-run
+  </label>
+</div>
+
+<!-- RECAP PANEL -->
+<div id="recap-panel">
+  <div id="recap-header">
+    <span id="recap-summary"></span>
+    <button class="btn-undo" id="recap-undo-btn" onclick="undoBatch()">↩ Undo</button>
+    <button class="recap-close" onclick="closeRecap()" title="Close">✕</button>
+  </div>
+  <div id="recap-rows"></div>
 </div>
 
 <!-- DROP ZONE -->
@@ -587,12 +733,15 @@ function rebuildAll() {
   document.getElementById('dropzone').style.display = 'none';
   document.getElementById('table-wrap').style.display = 'block';
   document.getElementById('toolbar').style.display = 'flex';
+  document.getElementById('batch-toolbar').style.display = 'flex';
   document.getElementById('save-all-btn').disabled = false;
   document.getElementById('reset-btn').style.display = 'flex';
 
   buildHeader();
   buildBody();
   applyFilters();
+  updateParamDatalist();
+  updateTableHeight();
 }
 
 function buildHeader() {
@@ -832,10 +981,13 @@ function resetAll() {
   loadingNames.clear();
   document.getElementById('table-wrap').style.display = 'none';
   document.getElementById('toolbar').style.display = 'none';
+  document.getElementById('batch-toolbar').style.display = 'none';
+  document.getElementById('recap-panel').style.display = 'none';
   document.getElementById('dropzone').style.display = 'flex';
   document.getElementById('save-all-btn').disabled = true;
   document.getElementById('reset-btn').style.display = 'none';
   document.getElementById('changes-badge').style.display = 'none';
+  lastBatchSnapshot = null;
 }
 
 // ── REMOVE FILE ───────────────────────────────────────────
@@ -846,9 +998,12 @@ function removeFile(id) {
   if (files.length === 0) {
     document.getElementById('table-wrap').style.display = 'none';
     document.getElementById('toolbar').style.display = 'none';
+    document.getElementById('batch-toolbar').style.display = 'none';
+    document.getElementById('recap-panel').style.display = 'none';
     document.getElementById('dropzone').style.display = 'flex';
     document.getElementById('save-all-btn').disabled = true;
     document.getElementById('changes-badge').style.display = 'none';
+    lastBatchSnapshot = null;
   } else {
     rebuildAll();
   }
@@ -933,6 +1088,165 @@ document.addEventListener('drop', e => {
   input.files = dt.files;
   addFiles(input);
 });
+
+// ── BATCH PATCH ───────────────────────────────────────────
+let lastBatchSnapshot = null;
+
+function updateParamDatalist() {
+  const dl = document.getElementById('batch-param-list');
+  dl.innerHTML = '';
+  const allKeys = new Set();
+  files.forEach(f => Object.keys(f.paramMap).forEach(k => allKeys.add(k)));
+  [...allKeys].sort().forEach(k => {
+    const opt = document.createElement('option');
+    opt.value = k;
+    dl.appendChild(opt);
+  });
+}
+
+function onBatchParamInput() {
+  const name    = document.getElementById('batch-param').value.trim();
+  const valueEl = document.getElementById('batch-value');
+  const boolEl  = document.getElementById('batch-value-bool');
+  const isBool  = files.some(f => f.paramMap[name]?.isBoolean);
+  valueEl.style.display = isBool ? 'none'  : 'block';
+  boolEl.style.display  = isBool ? 'block' : 'none';
+}
+
+function getBatchValue() {
+  const boolEl = document.getElementById('batch-value-bool');
+  return boolEl.style.display !== 'none'
+    ? boolEl.value
+    : document.getElementById('batch-value').value.trim();
+}
+
+function batchApply(forceDryRun) {
+  const paramName = document.getElementById('batch-param').value.trim();
+  const newValue  = getBatchValue();
+  const dryRun    = forceDryRun || document.getElementById('batch-dryrun').checked;
+  if (!paramName || newValue === '') return;
+
+  const results  = [];
+  const snapshot = [];
+  let modifiedCount = 0;
+
+  files.forEach(file => {
+    const paramLine = file.paramMap[paramName];
+    if (!paramLine) {
+      results.push({ file, status: 'absent' });
+      return;
+    }
+
+    const inp = document.getElementById(`inp_${file.id}_${paramName}`);
+    const currentValue = inp
+      ? (inp.type === 'checkbox' ? (inp.checked ? 'true' : 'false') : inp.value)
+      : String(paramLine.value);
+
+    if (currentValue === newValue) {
+      results.push({ file, status: 'same', oldValue: currentValue });
+      return;
+    }
+
+    results.push({ file, status: 'modified', oldValue: currentValue });
+    modifiedCount++;
+
+    if (!dryRun && inp) {
+      snapshot.push({ fileId: file.id, param: paramName, oldValue: currentValue, isCheckbox: inp.type === 'checkbox' });
+      if (inp.type === 'checkbox') {
+        inp.checked = newValue === 'true';
+      } else {
+        inp.value = newValue;
+      }
+      onCellChange(file.id, paramName, inp);
+    }
+  });
+
+  lastBatchSnapshot = (!dryRun && modifiedCount > 0)
+    ? { param: paramName, newValue, changes: snapshot }
+    : null;
+
+  showRecap(paramName, newValue, results, modifiedCount, dryRun);
+}
+
+function showRecap(param, newValue, results, modifiedCount, dryRun) {
+  const panel   = document.getElementById('recap-panel');
+  const summary = document.getElementById('recap-summary');
+  const undoBtn = document.getElementById('recap-undo-btn');
+  const rowsEl  = document.getElementById('recap-rows');
+  const total   = results.length;
+
+  if (dryRun) {
+    summary.className   = 'dry';
+    summary.textContent = `[DRY-RUN]  ${param} → "${newValue}"  —  ${modifiedCount}/${total} file(s) would be modified`;
+  } else if (modifiedCount > 0) {
+    summary.className   = 'ok';
+    summary.textContent = `✓  ${param} → "${newValue}"  —  ${modifiedCount}/${total} file(s) modified`;
+  } else {
+    summary.className   = 'warn';
+    summary.textContent = `${param}  —  no changes (absent or already "${newValue}")`;
+  }
+
+  undoBtn.style.display = (!dryRun && modifiedCount > 0) ? 'inline-block' : 'none';
+
+  rowsEl.innerHTML = '';
+  results.forEach(r => {
+    const div = document.createElement('div');
+    div.className = 'recap-row ' + (r.status === 'modified' ? 'modified' : 'skipped');
+
+    let changeHtml;
+    if (r.status === 'modified') {
+      changeHtml = `<span class="rr-old">${escHtml(r.oldValue)}</span>
+                    <span class="rr-arr">→</span>
+                    <span class="rr-new">${escHtml(newValue)}</span>`;
+    } else if (r.status === 'absent') {
+      changeHtml = `<span class="rr-skip">parameter not found</span>`;
+    } else {
+      changeHtml = `<span class="rr-skip">already "${escHtml(r.oldValue)}"</span>`;
+    }
+
+    const icon = r.status === 'modified' ? (dryRun ? '◎' : '✓')
+               : r.status === 'absent'   ? '–' : '=';
+
+    div.innerHTML = `<span class="rr-icon">${icon}</span>
+                     <span class="rr-file">${escHtml(r.file.name)}</span>
+                     <span class="rr-change">${changeHtml}</span>`;
+    rowsEl.appendChild(div);
+  });
+
+  panel.style.display = 'block';
+  updateTableHeight();
+}
+
+function undoBatch() {
+  if (!lastBatchSnapshot) return;
+  lastBatchSnapshot.changes.forEach(({ fileId, param, oldValue, isCheckbox }) => {
+    const inp = document.getElementById(`inp_${fileId}_${param}`);
+    if (!inp) return;
+    if (isCheckbox) { inp.checked = oldValue === 'true'; }
+    else            { inp.value = oldValue; }
+    onCellChange(fileId, param, inp);
+  });
+  lastBatchSnapshot = null;
+  closeRecap();
+}
+
+function closeRecap() {
+  document.getElementById('recap-panel').style.display = 'none';
+  updateTableHeight();
+}
+
+function updateTableHeight() {
+  requestAnimationFrame(() => {
+    const wrap     = document.getElementById('table-wrap');
+    if (wrap.style.display === 'none') return;
+    const batchBar = document.getElementById('batch-toolbar');
+    const recap    = document.getElementById('recap-panel');
+    let h = 52 + 40;
+    if (batchBar.style.display !== 'none') h += batchBar.offsetHeight;
+    if (recap.style.display    !== 'none') h += recap.offsetHeight;
+    wrap.style.height = `calc(100vh - ${h}px)`;
+  });
+}
 
 // ── THEME ─────────────────────────────────────────────────
 const SUN_SVG = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`;

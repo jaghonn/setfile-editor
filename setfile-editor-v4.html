@@ -559,80 +559,6 @@ td.diff-cell .toggle-val { color: var(--diff); }
 .rr-new  { color: var(--gold); font-family: monospace; font-weight: 600; }
 .rr-skip { color: var(--text-muted); font-style: italic; }
 
-/* ── PROFILE TEMPLATE PANEL ─────────────────────────────── */
-#profile-template-panel {
-  display: none;
-  padding: 16px 16px 4px;
-}
-
-.tpl-section {
-  margin-bottom: 14px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.tpl-section-header {
-  padding: 8px 14px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-}
-.tpl-section-header.chart {
-  background: rgba(45,122,255,0.10);
-  border-bottom: 2px solid #2d7aff;
-  color: #2d7aff;
-}
-.tpl-section-header.expert {
-  background: var(--gold-dim);
-  border-bottom: 2px solid var(--gold);
-  color: var(--gold);
-}
-
-.tpl-rows {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-}
-
-.tpl-row {
-  display: flex;
-  align-items: center;
-  border-bottom: 1px solid var(--border);
-  border-right: 1px solid var(--border);
-  min-height: 30px;
-}
-.tpl-row:last-child { border-bottom: none; }
-
-.tpl-label {
-  font-family: 'SF Mono','JetBrains Mono','Fira Code',monospace;
-  font-size: 11px;
-  color: var(--text-dim);
-  padding: 4px 10px;
-  width: 155px;
-  min-width: 155px;
-  border-right: 1px solid var(--border);
-  word-break: break-all;
-  line-height: 1.4;
-}
-
-.tpl-value-cell { flex: 1; background: var(--bg); }
-
-.tpl-input {
-  width: 100%;
-  background: transparent;
-  border: none;
-  color: var(--text);
-  padding: 4px 8px;
-  font-size: 12px;
-  font-family: 'SF Mono','JetBrains Mono',monospace;
-  outline: none;
-}
-.tpl-input:focus {
-  background: var(--cell-focus-bg);
-  box-shadow: inset 0 0 0 1px var(--accent);
-}
-.tpl-input.modified { color: var(--gold); }
 </style>
 </head>
 <body>
@@ -719,7 +645,6 @@ td.diff-cell .toggle-val { color: var(--diff); }
 
 <!-- TABLE -->
 <div id="table-wrap">
-  <div id="profile-template-panel"></div>
   <table id="main-table">
     <thead id="table-head"><tr><th><div class="th-inner"><span style="color:var(--text-dim);font-size:11px">PARAMETER</span></div></th></tr></thead>
     <tbody id="table-body"></tbody>
@@ -851,9 +776,23 @@ function buildParamMap(parsed) {
 
 // ── UNIFIED ROW ORDER ─────────────────────────────────────
 function buildUnifiedRows() {
-  // Use first file as template, then append any extra keys from other files
   const seen = new Set();
   const rows = [];
+
+  // In Profile Creator tab with only .set files: prepend virtual CHART + EXPERT sections
+  const hasChr = files.some(f => f.fileType === 'chr');
+  if (currentTab === 'profile' && !hasChr) {
+    const injectSection = (key, title, block, defaults) => {
+      rows.push({ type: 'section', key, title, chrBlock: block });
+      seen.add('s:' + key);
+      defaults.forEach(([k, defVal]) => {
+        rows.push({ type: 'simple', key: k, value: defVal, isBoolean: false, chrBlock: block, virtual: true, virtualDefault: defVal });
+        seen.add(k);
+      });
+    };
+    injectSection('_virtual_chart',  'CHART',  'chart',  PROFILE_CHART_DEFAULTS);
+    injectSection('_virtual_expert', 'EXPERT', 'expert', PROFILE_EXPERT_DEFAULTS);
+  }
 
   for (const file of files) {
     for (const line of file.parsed) {
@@ -895,7 +834,6 @@ function rebuildAll() {
   applyFilters();
   updateParamDatalist();
   updateTableHeight();
-  if (currentTab === 'profile') renderProfilePanel();
 }
 
 function buildHeader() {
@@ -969,8 +907,8 @@ function buildBody() {
       td.dataset.key = row.key;
 
       const paramLine = file.paramMap[row.key];
-      const value = paramLine ? paramLine.value : '';
-      const isBoolean = paramLine?.isBoolean;
+      const value = paramLine ? paramLine.value : (row.virtual ? row.virtualDefault : '');
+      const isBoolean = paramLine?.isBoolean ?? false;
 
       if (isBoolean) {
         td.innerHTML = `<label class="cell-toggle" title="Click to toggle">
@@ -1097,11 +1035,10 @@ function applyFilters() {
     diffOnly && visibleDiff === 0 ? 'block' : 'none';
 }
 
-// Returns true when a chrBlock should be hidden from the table
-// (non-inputs blocks are always hidden — the profile panel renders them instead)
+// Returns true when a chrBlock should be hidden in the current tab
 function isChrNonInputsBlock(block) {
-  if (!block || block === 'inputs') return false; // inputs / .set rows → always visible in table
-  return true; // chart/expert/window/indicator → hidden from table; profile panel shows them
+  if (!block || block === 'inputs') return false; // inputs / .set rows → always visible
+  return currentTab === 'set';                    // hide in Set Editor, show in Profile Creator
 }
 
 function toggleDiffOnly() {
@@ -1155,7 +1092,6 @@ function resetAll() {
   document.getElementById('toolbar').style.display = 'none';
   document.getElementById('batch-toolbar').style.display = 'none';
   document.getElementById('recap-panel').style.display = 'none';
-  document.getElementById('profile-template-panel').style.display = 'none';
   document.getElementById('dropzone').style.display = 'flex';
   document.getElementById('save-all-btn').disabled = true;
   document.getElementById('reset-btn').style.display = 'none';
@@ -1173,7 +1109,6 @@ function removeFile(id) {
     document.getElementById('toolbar').style.display = 'none';
     document.getElementById('batch-toolbar').style.display = 'none';
     document.getElementById('recap-panel').style.display = 'none';
-    document.getElementById('profile-template-panel').style.display = 'none';
     document.getElementById('dropzone').style.display = 'flex';
     document.getElementById('save-all-btn').disabled = true;
     document.getElementById('changes-badge').style.display = 'none';
@@ -1524,8 +1459,8 @@ function updateTableHeight() {
   });
 }
 
-// ── PROFILE TEMPLATE PANEL ───────────────────────────────
-const CHR_CHART_DEFAULTS = [
+// ── PROFILE DEFAULTS (injected as virtual rows when in Profile tab + no .chr) ──
+const PROFILE_CHART_DEFAULTS = [
   ['id','001'],['symbol','EURUSD'],['description',''],['period_type','1'],
   ['period_size','24'],['digits','2'],['tick_size','0.000000'],
   ['position_time','1756080000'],['scale_fix','0'],['scale_fixed_min','2252.200000'],
@@ -1545,58 +1480,11 @@ const CHR_CHART_DEFAULTS = [
   ['lastline_color','15776412'],['stops_color','5264367'],['windows_total','1']
 ];
 
-const CHR_EXPERT_DEFAULTS = [
+const PROFILE_EXPERT_DEFAULTS = [
   ['name','Ultimate Breakout System'],
   ['path','Experts\\Market\\Ultimate Breakout System.ex5'],
   ['expertmode','1']
 ];
-
-function renderProfilePanel() {
-  const panel = document.getElementById('profile-template-panel');
-  const chrFile = files.find(f => f.fileType === 'chr');
-
-  const sections = [
-    { block: 'chart',  cls: 'chart',  title: 'CHART',  defaults: CHR_CHART_DEFAULTS  },
-    { block: 'expert', cls: 'expert', title: 'EXPERT', defaults: CHR_EXPERT_DEFAULTS }
-  ];
-
-  panel.innerHTML = sections.map(sec => {
-    const rows = sec.defaults.map(([key, defVal]) => {
-      const val = chrFile?.paramMap[key]?.value ?? defVal;
-      const inputId = `tpl_${sec.block}_${key}`;
-      return `<div class="tpl-row">
-        <span class="tpl-label">${key}</span>
-        <div class="tpl-value-cell">
-          <input class="tpl-input" id="${inputId}"
-            data-key="${key}" data-block="${sec.block}"
-            value="${escHtml(val)}" spellcheck="false"
-            oninput="onTplInputChange(this)">
-        </div>
-      </div>`;
-    }).join('');
-    return `<div class="tpl-section">
-      <div class="tpl-section-header ${sec.cls}">${sec.title}</div>
-      <div class="tpl-rows">${rows}</div>
-    </div>`;
-  }).join('');
-
-  panel.style.display = 'block';
-}
-
-function onTplInputChange(el) {
-  el.classList.add('modified');
-  const key = el.dataset.key;
-  const val = el.value;
-  // Sync to all .chr table inputs so collectFileContent picks up the change
-  files.forEach(f => {
-    if (f.fileType !== 'chr') return;
-    const inp = document.getElementById(`inp_${f.id}_${key}`);
-    if (!inp) return;
-    if (inp.type === 'checkbox') { inp.checked = val === 'true'; }
-    else { inp.value = val; }
-    onCellChange(f.id, key, inp);
-  });
-}
 
 // ── TABS ──────────────────────────────────────────────────
 let currentTab = 'set';
@@ -1608,12 +1496,7 @@ function switchTab(tab) {
   document.querySelectorAll('.tab-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.tab === tab)
   );
-  if (tab === 'profile' && files.length > 0) {
-    renderProfilePanel();
-  } else {
-    document.getElementById('profile-template-panel').style.display = 'none';
-  }
-  applyFilters();
+  if (files.length > 0) rebuildAll();
 }
 
 // ── THEME ─────────────────────────────────────────────────

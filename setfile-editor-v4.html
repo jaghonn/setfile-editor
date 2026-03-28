@@ -558,6 +558,81 @@ td.diff-cell .toggle-val { color: var(--diff); }
 .rr-arr  { color: var(--text-muted); }
 .rr-new  { color: var(--gold); font-family: monospace; font-weight: 600; }
 .rr-skip { color: var(--text-muted); font-style: italic; }
+
+/* ── PROFILE TEMPLATE PANEL ─────────────────────────────── */
+#profile-template-panel {
+  display: none;
+  padding: 16px 16px 4px;
+}
+
+.tpl-section {
+  margin-bottom: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.tpl-section-header {
+  padding: 8px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.tpl-section-header.chart {
+  background: rgba(45,122,255,0.10);
+  border-bottom: 2px solid #2d7aff;
+  color: #2d7aff;
+}
+.tpl-section-header.expert {
+  background: var(--gold-dim);
+  border-bottom: 2px solid var(--gold);
+  color: var(--gold);
+}
+
+.tpl-rows {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+.tpl-row {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  min-height: 30px;
+}
+.tpl-row:last-child { border-bottom: none; }
+
+.tpl-label {
+  font-family: 'SF Mono','JetBrains Mono','Fira Code',monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  padding: 4px 10px;
+  width: 155px;
+  min-width: 155px;
+  border-right: 1px solid var(--border);
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+.tpl-value-cell { flex: 1; background: var(--bg); }
+
+.tpl-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  padding: 4px 8px;
+  font-size: 12px;
+  font-family: 'SF Mono','JetBrains Mono',monospace;
+  outline: none;
+}
+.tpl-input:focus {
+  background: var(--cell-focus-bg);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.tpl-input.modified { color: var(--gold); }
 </style>
 </head>
 <body>
@@ -644,6 +719,7 @@ td.diff-cell .toggle-val { color: var(--diff); }
 
 <!-- TABLE -->
 <div id="table-wrap">
+  <div id="profile-template-panel"></div>
   <table id="main-table">
     <thead id="table-head"><tr><th><div class="th-inner"><span style="color:var(--text-dim);font-size:11px">PARAMETER</span></div></th></tr></thead>
     <tbody id="table-body"></tbody>
@@ -819,6 +895,7 @@ function rebuildAll() {
   applyFilters();
   updateParamDatalist();
   updateTableHeight();
+  if (currentTab === 'profile') renderProfilePanel();
 }
 
 function buildHeader() {
@@ -1020,10 +1097,11 @@ function applyFilters() {
     diffOnly && visibleDiff === 0 ? 'block' : 'none';
 }
 
-// Returns true when a chrBlock should be hidden in the current tab
+// Returns true when a chrBlock should be hidden from the table
+// (non-inputs blocks are always hidden — the profile panel renders them instead)
 function isChrNonInputsBlock(block) {
-  if (!block || block === 'inputs') return false;          // inputs / .set rows → always visible
-  return currentTab === 'set';                             // hide in Set Editor, show in Profile Creator
+  if (!block || block === 'inputs') return false; // inputs / .set rows → always visible in table
+  return true; // chart/expert/window/indicator → hidden from table; profile panel shows them
 }
 
 function toggleDiffOnly() {
@@ -1077,6 +1155,7 @@ function resetAll() {
   document.getElementById('toolbar').style.display = 'none';
   document.getElementById('batch-toolbar').style.display = 'none';
   document.getElementById('recap-panel').style.display = 'none';
+  document.getElementById('profile-template-panel').style.display = 'none';
   document.getElementById('dropzone').style.display = 'flex';
   document.getElementById('save-all-btn').disabled = true;
   document.getElementById('reset-btn').style.display = 'none';
@@ -1094,6 +1173,7 @@ function removeFile(id) {
     document.getElementById('toolbar').style.display = 'none';
     document.getElementById('batch-toolbar').style.display = 'none';
     document.getElementById('recap-panel').style.display = 'none';
+    document.getElementById('profile-template-panel').style.display = 'none';
     document.getElementById('dropzone').style.display = 'flex';
     document.getElementById('save-all-btn').disabled = true;
     document.getElementById('changes-badge').style.display = 'none';
@@ -1444,6 +1524,80 @@ function updateTableHeight() {
   });
 }
 
+// ── PROFILE TEMPLATE PANEL ───────────────────────────────
+const CHR_CHART_DEFAULTS = [
+  ['id','001'],['symbol','EURUSD'],['description',''],['period_type','1'],
+  ['period_size','24'],['digits','2'],['tick_size','0.000000'],
+  ['position_time','1756080000'],['scale_fix','0'],['scale_fixed_min','2252.200000'],
+  ['scale_fixed_max','5667.600000'],['scale_fix11','0'],['scale_bar','0'],
+  ['scale_bar_val','1.000000'],['scale','2'],['mode','1'],['fore','0'],
+  ['grid','0'],['volume','0'],['scroll','1'],['shift','1'],['shift_size','20.000000'],
+  ['fixed_pos','0.000000'],['ticker','1'],['ohlc','0'],['one_click','0'],
+  ['one_click_btn','0'],['bidline','1'],['askline','1'],['lastline','0'],
+  ['days','1'],['descriptions','0'],['tradelines','1'],['tradehistory','1'],
+  ['window_left','0'],['window_top','0'],['window_right','1537'],['window_bottom','947'],
+  ['window_type','1'],['floating','0'],['floating_left','0'],['floating_top','0'],
+  ['floating_right','0'],['floating_bottom','0'],['floating_type','1'],['floating_toolbar','1'],
+  ['floating_tbstate',''],['background_color','0'],['foreground_color','16777215'],
+  ['barup_color','10135078'],['bardown_color','5264367'],['bullcandle_color','10135078'],
+  ['bearcandle_color','5264367'],['chartline_color','8698454'],['volumes_color','10135078'],
+  ['grid_color','15920369'],['bidline_color','10135078'],['askline_color','5264367'],
+  ['lastline_color','15776412'],['stops_color','5264367'],['windows_total','1']
+];
+
+const CHR_EXPERT_DEFAULTS = [
+  ['name','Ultimate Breakout System'],
+  ['path','Experts\\Market\\Ultimate Breakout System.ex5'],
+  ['expertmode','1']
+];
+
+function renderProfilePanel() {
+  const panel = document.getElementById('profile-template-panel');
+  const chrFile = files.find(f => f.fileType === 'chr');
+
+  const sections = [
+    { block: 'chart',  cls: 'chart',  title: 'CHART',  defaults: CHR_CHART_DEFAULTS  },
+    { block: 'expert', cls: 'expert', title: 'EXPERT', defaults: CHR_EXPERT_DEFAULTS }
+  ];
+
+  panel.innerHTML = sections.map(sec => {
+    const rows = sec.defaults.map(([key, defVal]) => {
+      const val = chrFile?.paramMap[key]?.value ?? defVal;
+      const inputId = `tpl_${sec.block}_${key}`;
+      return `<div class="tpl-row">
+        <span class="tpl-label">${key}</span>
+        <div class="tpl-value-cell">
+          <input class="tpl-input" id="${inputId}"
+            data-key="${key}" data-block="${sec.block}"
+            value="${escHtml(val)}" spellcheck="false"
+            oninput="onTplInputChange(this)">
+        </div>
+      </div>`;
+    }).join('');
+    return `<div class="tpl-section">
+      <div class="tpl-section-header ${sec.cls}">${sec.title}</div>
+      <div class="tpl-rows">${rows}</div>
+    </div>`;
+  }).join('');
+
+  panel.style.display = 'block';
+}
+
+function onTplInputChange(el) {
+  el.classList.add('modified');
+  const key = el.dataset.key;
+  const val = el.value;
+  // Sync to all .chr table inputs so collectFileContent picks up the change
+  files.forEach(f => {
+    if (f.fileType !== 'chr') return;
+    const inp = document.getElementById(`inp_${f.id}_${key}`);
+    if (!inp) return;
+    if (inp.type === 'checkbox') { inp.checked = val === 'true'; }
+    else { inp.value = val; }
+    onCellChange(f.id, key, inp);
+  });
+}
+
 // ── TABS ──────────────────────────────────────────────────
 let currentTab = 'set';
 let autoSwitchToProfile = false;
@@ -1454,6 +1608,11 @@ function switchTab(tab) {
   document.querySelectorAll('.tab-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.tab === tab)
   );
+  if (tab === 'profile' && files.length > 0) {
+    renderProfilePanel();
+  } else {
+    document.getElementById('profile-template-panel').style.display = 'none';
+  }
   applyFilters();
 }
 

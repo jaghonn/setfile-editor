@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -26,6 +26,37 @@
   --green-dim: #0a2018;
   --col-w: 180px;
   --label-w: 240px;
+  --modified-bg: #1c1a0a;
+  --toggle-checked-bg: #2d2a5e;
+  --label-hover-bg: #14172a;
+  --save-border: #1a6644;
+  --cell-focus-bg: rgba(124,106,247,0.08);
+  --row-hover-bg: rgba(124,106,247,0.04);
+}
+
+[data-theme="light"] {
+  --bg: #f4f5fb;
+  --surface: #ffffff;
+  --surface2: #eceef8;
+  --border: #d5d8ef;
+  --border2: #bec2df;
+  --text: #1a1d2e;
+  --text-dim: #5a5f80;
+  --text-muted: #9a9fba;
+  --accent: #5a4fcf;
+  --accent-dim: #edeafd;
+  --gold: #8a6000;
+  --gold-dim: #fff3cc;
+  --diff: #b03030;
+  --diff-dim: #fce8e8;
+  --green: #1a7a50;
+  --green-dim: #d4f5e8;
+  --modified-bg: #fffae0;
+  --toggle-checked-bg: #c5bff8;
+  --label-hover-bg: #e8eaf6;
+  --save-border: #0a6640;
+  --cell-focus-bg: rgba(90,79,207,0.07);
+  --row-hover-bg: rgba(90,79,207,0.04);
 }
 
 body {
@@ -34,6 +65,7 @@ body {
   color: var(--text);
   min-height: 100vh;
   overflow-x: hidden;
+  transition: background 0.2s, color 0.2s;
 }
 
 /* ── HEADER ─────────────────────────────────────────── */
@@ -75,7 +107,7 @@ body {
 .btn-ghost:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
 .btn-accent { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
 .btn-accent:hover { background: var(--accent); color: #fff; }
-.btn-save { background: var(--green-dim); color: var(--green); border-color: #1a6644; }
+.btn-save { background: var(--green-dim); color: var(--green); border-color: var(--save-border); }
 .btn-save:hover { background: var(--green); color: #000; }
 .btn-save:disabled { opacity: 0.3; cursor: not-allowed; }
 
@@ -240,7 +272,7 @@ thead th:first-child {
   font-weight: 600;
   transition: all 0.1s;
 }
-.btn-tiny-save { background: var(--green-dim); color: var(--green); border-color: #1a6644; }
+.btn-tiny-save { background: var(--green-dim); color: var(--green); border-color: var(--save-border); }
 .btn-tiny-save:hover { background: var(--green); color: #000; }
 .btn-tiny-remove { background: transparent; color: var(--text-dim); border-color: var(--border); }
 .btn-tiny-remove:hover { background: var(--diff-dim); color: var(--diff); border-color: var(--diff); }
@@ -270,7 +302,7 @@ tr.param-row {
   border-bottom: 1px solid var(--border);
   transition: background 0.1s;
 }
-tr.param-row:hover { background: rgba(124,106,247,0.04); }
+tr.param-row:hover { background: var(--row-hover-bg); }
 tr.param-row.hidden { display: none; }
 
 tr.param-row td {
@@ -289,7 +321,7 @@ td.label-cell {
   padding: 6px 12px;
   border-right: 2px solid var(--border2);
 }
-tr.param-row:hover td.label-cell { background: #14172a; }
+tr.param-row:hover td.label-cell { background: var(--label-hover-bg); }
 
 .param-name {
   font-family: 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
@@ -316,7 +348,7 @@ td.value-cell {
 }
 
 td.value-cell.diff-cell { background: var(--diff-dim); }
-td.value-cell.modified-cell { background: #1c1a0a; }
+td.value-cell.modified-cell { background: var(--modified-bg); }
 
 .cell-input {
   width: 100%;
@@ -330,7 +362,7 @@ td.value-cell.modified-cell { background: #1c1a0a; }
   outline: none;
 }
 .cell-input:focus {
-  background: rgba(124,106,247,0.08);
+  background: var(--cell-focus-bg);
   box-shadow: inset 0 0 0 1px var(--accent);
 }
 .cell-input.modified { color: var(--gold); }
@@ -366,7 +398,7 @@ td.diff-cell .cell-input { color: var(--diff); }
   border-radius: 50%;
   transition: 0.15s;
 }
-.toggle input:checked + .toggle-slider { background: #2d2a5e; }
+.toggle input:checked + .toggle-slider { background: var(--toggle-checked-bg); }
 .toggle input:checked + .toggle-slider:before {
   transform: translateX(14px);
   background: var(--accent);
@@ -408,6 +440,7 @@ td.diff-cell .toggle-val { color: var(--diff); }
   </button>
   <div class="spacer"></div>
   <span class="badge badge-gold" id="changes-badge" style="display:none">0 changes</span>
+  <button class="btn btn-ghost" id="theme-btn" onclick="toggleTheme()" title="Switch to light theme" style="padding:6px 10px;"></button>
   <input type="file" id="file-input" accept=".set" multiple onchange="addFiles(this)">
 </div>
 
@@ -899,6 +932,33 @@ document.addEventListener('drop', e => {
   input.files = dt.files;
   addFiles(input);
 });
+
+// ── THEME ─────────────────────────────────────────────────
+const SUN_SVG = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`;
+const MOON_SVG = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('seteditor-theme', theme);
+  const btn = document.getElementById('theme-btn');
+  if (btn) {
+    if (theme === 'dark') {
+      btn.innerHTML = SUN_SVG;
+      btn.title = 'Switch to light theme';
+    } else {
+      btn.innerHTML = MOON_SVG;
+      btn.title = 'Switch to dark theme';
+    }
+  }
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme');
+  applyTheme(current === 'dark' ? 'light' : 'dark');
+}
+
+// Initialise au chargement (dark par défaut)
+applyTheme(localStorage.getItem('seteditor-theme') || 'dark');
 </script>
 </body>
 </html>

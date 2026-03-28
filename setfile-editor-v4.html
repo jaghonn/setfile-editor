@@ -597,7 +597,7 @@ td.diff-cell .toggle-val { color: var(--diff); }
   </button>
   <div class="spacer"></div>
   <span class="badge badge-gold" id="changes-badge" style="display:none">0 changes</span>
-  <span style="font-size:10px;color:var(--text-muted);margin-right:4px">v5.6</span>
+  <span style="font-size:10px;color:var(--text-muted);margin-right:4px">v5.8</span>
   <div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end">
     <span style="font-size:10px;color:var(--text-muted)">Created by <a href="https://t.me/basa2021" target="_blank" style="color:var(--text-dim);text-decoration:none;">t.me/basa2021</a></span>
     <span style="font-size:10px;color:var(--text-muted)">Modified by <a href="https://t.me/Jaghonn" target="_blank" style="color:var(--text-dim);text-decoration:none;">t.me/Jaghonn</a></span>
@@ -1224,8 +1224,11 @@ function saveChrFile(id) {
 }
 
 function saveAllChr() {
-  if (files.length === 1) { saveChrFile(files[0].id); return; }
-  const entries = files.map(f => ({ name: chrFilename(f.name), data: buildFileBytes(buildChrContent(f)) }));
+  const chrNames = files.map(f => chrFilename(f.name));
+  const entries = files.map((f, i) => ({ name: chrNames[i], data: buildFileBytes(buildChrContent(f)) }));
+  // order.wnd : list of .chr filenames, one per line, UTF-16 LE
+  const wndContent = chrNames.join('\r\n');
+  entries.push({ name: 'order.wnd', data: buildFileBytes(wndContent) });
   const zip  = buildZip(entries);
   const blob = new Blob([zip], { type: 'application/zip' });
   const a    = document.createElement('a');

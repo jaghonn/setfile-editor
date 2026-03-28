@@ -90,6 +90,12 @@ body {
 }
 .tab-btn:hover { color: var(--text); background: var(--surface2); }
 .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-btn[data-tab="set"].active    { color: var(--green);  border-bottom-color: var(--green); }
+.tab-btn[data-tab="profile"].active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* Show/hide save buttons per active tab */
+body.tab-set     .btn-tab-chr { display: none !important; }
+body.tab-profile .btn-tab-set { display: none !important; }
 
 /* ── HEADER ─────────────────────────────────────────── */
 #topbar {
@@ -124,9 +130,14 @@ body {
 .btn-ghost:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
 .btn-accent { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
 .btn-accent:hover { background: var(--accent); color: #fff; }
+body.tab-set .btn-accent { background: var(--green-dim); color: var(--green); border-color: var(--save-border); }
+body.tab-set .btn-accent:hover { background: var(--green); color: #000; }
 .btn-save { background: var(--green-dim); color: var(--green); border-color: var(--save-border); }
 .btn-save:hover { background: var(--green); color: #000; }
 .btn-save:disabled { opacity: 0.3; cursor: not-allowed; }
+.btn-chr { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+.btn-chr:hover { background: var(--accent); color: #fff; }
+.btn-chr:disabled { opacity: 0.3; cursor: not-allowed; }
 
 .badge {
   padding: 2px 8px;
@@ -291,6 +302,8 @@ thead th:first-child {
 }
 .btn-tiny-save { background: var(--green-dim); color: var(--green); border-color: var(--save-border); }
 .btn-tiny-save:hover { background: var(--green); color: #000; }
+.btn-tiny-chr { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+.btn-tiny-chr:hover { background: var(--accent); color: #fff; }
 .btn-tiny-remove { background: transparent; color: var(--text-dim); border-color: var(--border); }
 .btn-tiny-remove:hover { background: var(--diff-dim); color: var(--diff); border-color: var(--diff); }
 
@@ -324,11 +337,18 @@ tr.param-row.hidden  { display: none; }
 tr.section-row.hidden { display: none; }
 
 /* Profile Creator — section block headers */
-tr.section-row[data-chr-block="chart"] td { border-top-color: #2d7aff; color: #2d7aff; }
-tr.section-row[data-chr-block="expert"] td { border-top-color: var(--gold); color: var(--gold); }
+tr.section-row[data-chr-block="chart"] td {
+  border-top-color: #2d7aff; color: #2d7aff;
+  background: rgba(45,122,255,0.13);
+}
+tr.section-row[data-chr-block="expert"] td {
+  border-top-color: var(--gold); color: var(--gold);
+  background: var(--gold-dim);
+}
 tr.section-row[data-chr-block="window"],
 tr.section-row[data-chr-block="indicator"] { opacity: 0.6; }
-[data-theme="light"] tr.section-row[data-chr-block="chart"] td { border-top-color: #1a5ccc; color: #1a5ccc; }
+[data-theme="light"] tr.section-row[data-chr-block="chart"] td { border-top-color: #1a5ccc; color: #1a5ccc; background: rgba(26,92,204,0.08); }
+[data-theme="light"] tr.section-row[data-chr-block="expert"] td { border-top-color: var(--gold); color: var(--gold); }
 
 tr.param-row td {
   border-right: 1px solid var(--border);
@@ -575,12 +595,17 @@ td.diff-cell .toggle-val { color: var(--diff); }
     Add Files
   </button>
   <button class="btn btn-ghost" id="reset-btn" onclick="resetAll()" style="display:none">Reset</button>
-  <button class="btn btn-save" id="save-all-btn" onclick="saveAll()" disabled>
+  <button class="btn btn-save btn-tab-set" id="save-all-btn" onclick="saveAll()" disabled>
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-    Save All
+    Save All .set
+  </button>
+  <button class="btn btn-chr btn-tab-chr" id="save-all-chr-btn" onclick="saveAllChr()" disabled>
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+    Save All .chr
   </button>
   <div class="spacer"></div>
   <span class="badge badge-gold" id="changes-badge" style="display:none">0 changes</span>
+  <span style="font-size:10px;color:var(--text-muted);margin-right:4px">v5.91</span>
   <div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end">
     <span style="font-size:10px;color:var(--text-muted)">Created by <a href="https://t.me/basa2021" target="_blank" style="color:var(--text-dim);text-decoration:none;">t.me/basa2021</a></span>
     <span style="font-size:10px;color:var(--text-muted)">Modified by <a href="https://t.me/Jaghonn" target="_blank" style="color:var(--text-dim);text-decoration:none;">t.me/Jaghonn</a></span>
@@ -792,6 +817,9 @@ function buildUnifiedRows() {
     };
     injectSection('_virtual_chart',  'CHART',  'chart',  PROFILE_CHART_DEFAULTS);
     injectSection('_virtual_expert', 'EXPERT', 'expert', PROFILE_EXPERT_DEFAULTS);
+    // INPUTS separator before the .set params
+    rows.push({ type: 'section', key: '_virtual_inputs', title: 'INPUTS', chrBlock: 'inputs' });
+    seen.add('s:_virtual_inputs');
   }
 
   for (const file of files) {
@@ -819,6 +847,7 @@ function rebuildAll() {
   document.getElementById('toolbar').style.display = 'flex';
   document.getElementById('batch-toolbar').style.display = 'flex';
   document.getElementById('save-all-btn').disabled = false;
+  document.getElementById('save-all-chr-btn').disabled = false;
   document.getElementById('reset-btn').style.display = 'flex';
 
   if (autoSwitchToProfile) {
@@ -847,7 +876,8 @@ function buildHeader() {
     th.innerHTML = `<div class="th-inner">
       <span class="th-filename" id="fn_${file.id}" title="Click to rename" onclick="startRename('${file.id}')">${file.name}</span>
       <div class="th-actions">
-        <button class="btn-tiny btn-tiny-save" onclick="saveFile('${file.id}')">Save</button>
+        <button class="btn-tiny btn-tiny-save btn-tab-set" onclick="saveFile('${file.id}')">Save .set</button>
+        <button class="btn-tiny btn-tiny-chr  btn-tab-chr" onclick="saveChrFile('${file.id}')">Save .chr</button>
         <button class="btn-tiny btn-tiny-remove" onclick="removeFile('${file.id}')">✕</button>
         <span class="th-change-count" id="cc_${file.id}" style="display:none"></span>
       </div>
@@ -1094,6 +1124,7 @@ function resetAll() {
   document.getElementById('recap-panel').style.display = 'none';
   document.getElementById('dropzone').style.display = 'flex';
   document.getElementById('save-all-btn').disabled = true;
+  document.getElementById('save-all-chr-btn').disabled = true;
   document.getElementById('reset-btn').style.display = 'none';
   document.getElementById('changes-badge').style.display = 'none';
   lastBatchSnapshot = null;
@@ -1111,6 +1142,7 @@ function removeFile(id) {
     document.getElementById('recap-panel').style.display = 'none';
     document.getElementById('dropzone').style.display = 'flex';
     document.getElementById('save-all-btn').disabled = true;
+    document.getElementById('save-all-chr-btn').disabled = true;
     document.getElementById('changes-badge').style.display = 'none';
     lastBatchSnapshot = null;
   } else {
@@ -1140,6 +1172,78 @@ function collectFileContent(file) {
     }
     return line.raw;
   }).join('\r\n');
+}
+
+// ── SAVE AS .CHR ─────────────────────────────────────────
+function buildChrContent(file) {
+  const lines = [];
+  lines.push('<chart>');
+
+  // CHART params — read from DOM inputs (virtual or actual .chr values)
+  PROFILE_CHART_DEFAULTS.forEach(([key, defVal]) => {
+    const inp = document.getElementById(`inp_${file.id}_${key}`);
+    const val = inp ? inp.value : (file.paramMap[key]?.value ?? defVal);
+    lines.push(`${key}=${val}`);
+  });
+
+  lines.push('<expert>');
+
+  // EXPERT params
+  PROFILE_EXPERT_DEFAULTS.forEach(([key, defVal]) => {
+    const inp = document.getElementById(`inp_${file.id}_${key}`);
+    const val = inp ? inp.value : (file.paramMap[key]?.value ?? defVal);
+    lines.push(`${key}=${val}`);
+  });
+
+  lines.push('<inputs>');
+
+  // INPUTS — .set params (type:'param') or .chr inputs-block params (type:'simple', chrBlock:'inputs')
+  const written = new Set();
+  file.parsed.forEach(line => {
+    if (line.type === 'param') {
+      const inp = document.getElementById(`inp_${file.id}_${line.key}`);
+      if (!inp) return;
+      const val = inp.type === 'checkbox' ? (inp.checked ? 'true' : 'false') : inp.value;
+      lines.push(`${line.key}=${val}||${line.def}||${line.mn}||${line.mx}||${line.opt ? 'Y' : 'N'}`);
+    } else if (line.type === 'simple' && (!line.chrBlock || line.chrBlock === 'inputs')) {
+      if (written.has(line.key)) return;
+      const inp = document.getElementById(`inp_${file.id}_${line.key}`);
+      if (!inp) return;
+      written.add(line.key);
+      const val = inp.type === 'checkbox' ? (inp.checked ? 'true' : 'false') : inp.value;
+      lines.push(`${line.key}=${val}`);
+    }
+  });
+
+  lines.push('</inputs>');
+  lines.push('</expert>');
+  lines.push('</chart>');
+  return lines.join('\r\n');
+}
+
+function chrFilename(name) {
+  return name.replace(/\.[^.]+$/, '') + '.chr';
+}
+
+function saveChrFile(id) {
+  const file = files.find(f => f.id === id);
+  if (!file) return;
+  downloadAsUtf16(chrFilename(file.name), buildChrContent(file));
+}
+
+function saveAllChr() {
+  const chrNames = files.map(f => chrFilename(f.name));
+  const entries = files.map((f, i) => ({ name: chrNames[i], data: buildFileBytes(buildChrContent(f)) }));
+  // order.wnd : list of .chr filenames, one per line, UTF-16 LE
+  const wndContent = chrNames.join('\r\n');
+  entries.push({ name: 'order.wnd', data: buildFileBytes(wndContent) });
+  const zip  = buildZip(entries);
+  const blob = new Blob([zip], { type: 'application/zip' });
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = 'profiles.zip';
+  a.click();
+  URL.revokeObjectURL(a.href);
 }
 
 // ── UTF-16 LE ENCODER ────────────────────────────────────
@@ -1308,6 +1412,11 @@ function updateParamDatalist() {
   dl.innerHTML = '';
   const allKeys = new Set();
   files.forEach(f => Object.keys(f.paramMap).forEach(k => allKeys.add(k)));
+  // Also include virtual profile keys (CHART + EXPERT defaults) when in profile tab without .chr
+  if (currentTab === 'profile' && !files.some(f => f.fileType === 'chr')) {
+    PROFILE_CHART_DEFAULTS.forEach(([k]) => allKeys.add(k));
+    PROFILE_EXPERT_DEFAULTS.forEach(([k]) => allKeys.add(k));
+  }
   [...allKeys].sort().forEach(k => {
     const opt = document.createElement('option');
     opt.value = k;
@@ -1343,12 +1452,12 @@ function batchApply(forceDryRun) {
 
   files.forEach(file => {
     const paramLine = file.paramMap[paramName];
-    if (!paramLine) {
+    // Also consider virtual profile rows (CHART/EXPERT defaults) present in the table
+    const inp = document.getElementById(`inp_${file.id}_${paramName}`);
+    if (!paramLine && !inp) {
       results.push({ file, status: 'absent' });
       return;
     }
-
-    const inp = document.getElementById(`inp_${file.id}_${paramName}`);
     const currentValue = inp
       ? (inp.type === 'checkbox' ? (inp.checked ? 'true' : 'false') : inp.value)
       : String(paramLine.value);
@@ -1488,6 +1597,7 @@ const PROFILE_EXPERT_DEFAULTS = [
 
 // ── TABS ──────────────────────────────────────────────────
 let currentTab = 'set';
+document.body.classList.add('tab-set');
 let autoSwitchToProfile = false;
 
 function switchTab(tab) {
@@ -1496,7 +1606,22 @@ function switchTab(tab) {
   document.querySelectorAll('.tab-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.tab === tab)
   );
-  if (files.length > 0) rebuildAll();
+  document.body.classList.toggle('tab-set',     tab === 'set');
+  document.body.classList.toggle('tab-profile', tab === 'profile');
+  if (files.length === 0) return;
+
+  // Only rebuild DOM when switching to Profile Creator for the first time
+  // (virtual CHART/EXPERT rows not yet injected). All other switches just
+  // show/hide rows via applyFilters so edits are preserved.
+  const hasChr = files.some(f => f.fileType === 'chr');
+  const virtualRowsMissing = tab === 'profile' && !hasChr &&
+    !document.querySelector('tr.section-row[data-section="_virtual_chart"]');
+
+  if (virtualRowsMissing) {
+    rebuildAll();
+  } else {
+    applyFilters();
+  }
 }
 
 // ── THEME ─────────────────────────────────────────────────

@@ -558,6 +558,7 @@ td.diff-cell .toggle-val { color: var(--diff); }
 .rr-arr  { color: var(--text-muted); }
 .rr-new  { color: var(--gold); font-family: monospace; font-weight: 600; }
 .rr-skip { color: var(--text-muted); font-style: italic; }
+
 </style>
 </head>
 <body>
@@ -775,9 +776,23 @@ function buildParamMap(parsed) {
 
 // ── UNIFIED ROW ORDER ─────────────────────────────────────
 function buildUnifiedRows() {
-  // Use first file as template, then append any extra keys from other files
   const seen = new Set();
   const rows = [];
+
+  // In Profile Creator tab with only .set files: prepend virtual CHART + EXPERT sections
+  const hasChr = files.some(f => f.fileType === 'chr');
+  if (currentTab === 'profile' && !hasChr) {
+    const injectSection = (key, title, block, defaults) => {
+      rows.push({ type: 'section', key, title, chrBlock: block });
+      seen.add('s:' + key);
+      defaults.forEach(([k, defVal]) => {
+        rows.push({ type: 'simple', key: k, value: defVal, isBoolean: false, chrBlock: block, virtual: true, virtualDefault: defVal });
+        seen.add(k);
+      });
+    };
+    injectSection('_virtual_chart',  'CHART',  'chart',  PROFILE_CHART_DEFAULTS);
+    injectSection('_virtual_expert', 'EXPERT', 'expert', PROFILE_EXPERT_DEFAULTS);
+  }
 
   for (const file of files) {
     for (const line of file.parsed) {
@@ -892,8 +907,8 @@ function buildBody() {
       td.dataset.key = row.key;
 
       const paramLine = file.paramMap[row.key];
-      const value = paramLine ? paramLine.value : '';
-      const isBoolean = paramLine?.isBoolean;
+      const value = paramLine ? paramLine.value : (row.virtual ? row.virtualDefault : '');
+      const isBoolean = paramLine?.isBoolean ?? false;
 
       if (isBoolean) {
         td.innerHTML = `<label class="cell-toggle" title="Click to toggle">
@@ -1022,8 +1037,8 @@ function applyFilters() {
 
 // Returns true when a chrBlock should be hidden in the current tab
 function isChrNonInputsBlock(block) {
-  if (!block || block === 'inputs') return false;          // inputs / .set rows → always visible
-  return currentTab === 'set';                             // hide in Set Editor, show in Profile Creator
+  if (!block || block === 'inputs') return false; // inputs / .set rows → always visible
+  return currentTab === 'set';                    // hide in Set Editor, show in Profile Creator
 }
 
 function toggleDiffOnly() {
@@ -1444,6 +1459,33 @@ function updateTableHeight() {
   });
 }
 
+// ── PROFILE DEFAULTS (injected as virtual rows when in Profile tab + no .chr) ──
+const PROFILE_CHART_DEFAULTS = [
+  ['id','001'],['symbol','EURUSD'],['description',''],['period_type','1'],
+  ['period_size','24'],['digits','2'],['tick_size','0.000000'],
+  ['position_time','1756080000'],['scale_fix','0'],['scale_fixed_min','2252.200000'],
+  ['scale_fixed_max','5667.600000'],['scale_fix11','0'],['scale_bar','0'],
+  ['scale_bar_val','1.000000'],['scale','2'],['mode','1'],['fore','0'],
+  ['grid','0'],['volume','0'],['scroll','1'],['shift','1'],['shift_size','20.000000'],
+  ['fixed_pos','0.000000'],['ticker','1'],['ohlc','0'],['one_click','0'],
+  ['one_click_btn','0'],['bidline','1'],['askline','1'],['lastline','0'],
+  ['days','1'],['descriptions','0'],['tradelines','1'],['tradehistory','1'],
+  ['window_left','0'],['window_top','0'],['window_right','1537'],['window_bottom','947'],
+  ['window_type','1'],['floating','0'],['floating_left','0'],['floating_top','0'],
+  ['floating_right','0'],['floating_bottom','0'],['floating_type','1'],['floating_toolbar','1'],
+  ['floating_tbstate',''],['background_color','0'],['foreground_color','16777215'],
+  ['barup_color','10135078'],['bardown_color','5264367'],['bullcandle_color','10135078'],
+  ['bearcandle_color','5264367'],['chartline_color','8698454'],['volumes_color','10135078'],
+  ['grid_color','15920369'],['bidline_color','10135078'],['askline_color','5264367'],
+  ['lastline_color','15776412'],['stops_color','5264367'],['windows_total','1']
+];
+
+const PROFILE_EXPERT_DEFAULTS = [
+  ['name','Ultimate Breakout System'],
+  ['path','Experts\\Market\\Ultimate Breakout System.ex5'],
+  ['expertmode','1']
+];
+
 // ── TABS ──────────────────────────────────────────────────
 let currentTab = 'set';
 let autoSwitchToProfile = false;
@@ -1454,7 +1496,7 @@ function switchTab(tab) {
   document.querySelectorAll('.tab-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.tab === tab)
   );
-  applyFilters();
+  if (files.length > 0) rebuildAll();
 }
 
 // ── THEME ─────────────────────────────────────────────────

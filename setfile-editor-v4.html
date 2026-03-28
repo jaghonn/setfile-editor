@@ -552,7 +552,10 @@ td.diff-cell .toggle-val { color: var(--diff); }
   </button>
   <div class="spacer"></div>
   <span class="badge badge-gold" id="changes-badge" style="display:none">0 changes</span>
-  <span style="font-size:11px;color:var(--text-muted)">Created by <a href="https://t.me/basa2021" target="_blank" style="color:var(--text-dim);text-decoration:none;">t.me/basa2021</a></span>
+  <div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end">
+    <span style="font-size:10px;color:var(--text-muted)">Created by <a href="https://t.me/basa2021" target="_blank" style="color:var(--text-dim);text-decoration:none;">t.me/basa2021</a></span>
+    <span style="font-size:10px;color:var(--text-muted)">Modified by <a href="https://t.me/Jaghonn" target="_blank" style="color:var(--text-dim);text-decoration:none;">t.me/Jaghonn</a></span>
+  </div>
   <button class="btn btn-ghost" id="theme-btn" onclick="toggleTheme()" title="Switch to light theme" style="padding:6px 10px;"></button>
   <input type="file" id="file-input" accept=".set" multiple onchange="addFiles(this)">
 </div>
@@ -1026,17 +1029,22 @@ function collectFileContent(file) {
   }).join('\r\n');
 }
 
-function downloadAsUtf16(filename, text) {
+// ── UTF-16 LE ENCODER ────────────────────────────────────
+function buildFileBytes(text) {
   const bom = new Uint8Array([0xFF, 0xFE]);
   const utf16 = new Uint8Array(text.length * 2);
   for (let i = 0; i < text.length; i++) {
     const c = text.charCodeAt(i);
-    utf16[i * 2] = c & 0xFF;
+    utf16[i * 2]     = c & 0xFF;
     utf16[i * 2 + 1] = (c >> 8) & 0xFF;
   }
   const buf = new Uint8Array(bom.length + utf16.length);
   buf.set(bom); buf.set(utf16, bom.length);
-  const blob = new Blob([buf], { type: 'application/octet-stream' });
+  return buf;
+}
+
+function downloadAsUtf16(filename, text) {
+  const blob = new Blob([buildFileBytes(text)], { type: 'application/octet-stream' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = filename;
@@ -1054,8 +1062,98 @@ function saveFile(id) {
   updateChangesBadge();
 }
 
+// ── ZIP WRITER ────────────────────────────────────────────
+(function () {
+  const _t = new Uint32Array(256);
+  for (let i = 0; i < 256; i++) {
+    let c = i;
+    for (let j = 0; j < 8; j++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    _t[i] = c;
+  }
+  window._crc32 = bytes => {
+    let c = 0xFFFFFFFF;
+    for (let i = 0; i < bytes.length; i++) c = _t[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+    return (c ^ 0xFFFFFFFF) >>> 0;
+  };
+})();
+
+function buildZip(entries) {
+  // entries: [{name: string, data: Uint8Array}]
+  const enc = new TextEncoder();
+  const w16 = (v, o, n) => v.setUint16(o, n, true);
+  const w32 = (v, o, n) => v.setUint32(o, n, true);
+
+  const now  = new Date();
+  const time = ((now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1));
+  const date = (((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate());
+
+  const locals = [];
+  let offset = 0;
+
+  for (const { name, data } of entries) {
+    const nb  = enc.encode(name);
+    const crc = window._crc32(data);
+    const lh  = new Uint8Array(30 + nb.length);
+    const lv  = new DataView(lh.buffer);
+    lh[0]=0x50; lh[1]=0x4B; lh[2]=0x03; lh[3]=0x04;
+    w16(lv, 4, 20); w16(lv, 6, 0); w16(lv, 8, 0);
+    w16(lv, 10, time); w16(lv, 12, date);
+    w32(lv, 14, crc); w32(lv, 18, data.length); w32(lv, 22, data.length);
+    w16(lv, 26, nb.length); w16(lv, 28, 0);
+    lh.set(nb, 30);
+    locals.push({ lh, data, crc, nb, offset });
+    offset += lh.length + data.length;
+  }
+
+  const cds = locals.map(e => {
+    const cd = new Uint8Array(46 + e.nb.length);
+    const cv = new DataView(cd.buffer);
+    cd[0]=0x50; cd[1]=0x4B; cd[2]=0x01; cd[3]=0x02;
+    w16(cv, 4, 20); w16(cv, 6, 20); w16(cv, 8, 0); w16(cv, 10, 0);
+    w16(cv, 12, e.lh[10] | (e.lh[11] << 8)); // time (already LE)
+    w16(cv, 14, e.lh[12] | (e.lh[13] << 8)); // date
+    w32(cv, 16, e.crc); w32(cv, 20, e.data.length); w32(cv, 24, e.data.length);
+    w16(cv, 28, e.nb.length); w16(cv, 30, 0); w16(cv, 32, 0);
+    w16(cv, 34, 0); w16(cv, 36, 0); w32(cv, 38, 0); w32(cv, 42, e.offset);
+    cd.set(e.nb, 46);
+    return cd;
+  });
+
+  const cdSize = cds.reduce((s, c) => s + c.length, 0);
+  const eocd = new Uint8Array(22);
+  const ev = new DataView(eocd.buffer);
+  eocd[0]=0x50; eocd[1]=0x4B; eocd[2]=0x05; eocd[3]=0x06;
+  w16(ev, 4, 0); w16(ev, 6, 0);
+  w16(ev, 8, locals.length); w16(ev, 10, locals.length);
+  w32(ev, 12, cdSize); w32(ev, 16, offset); w16(ev, 20, 0);
+
+  const out = new Uint8Array(offset + cdSize + 22);
+  let pos = 0;
+  locals.forEach(e => { out.set(e.lh, pos); pos += e.lh.length; out.set(e.data, pos); pos += e.data.length; });
+  cds.forEach(c => { out.set(c, pos); pos += c.length; });
+  out.set(eocd, pos);
+  return out;
+}
+
 function saveAll() {
-  files.forEach((f, i) => setTimeout(() => saveFile(f.id), i * 150));
+  if (files.length === 1) { saveFile(files[0].id); return; }
+
+  const entries = files.map(f => ({ name: f.name, data: buildFileBytes(collectFileContent(f)) }));
+  const zip     = buildZip(entries);
+  const blob    = new Blob([zip], { type: 'application/zip' });
+  const a       = document.createElement('a');
+  a.href        = URL.createObjectURL(blob);
+  a.download    = 'setfiles.zip';
+  a.click();
+  URL.revokeObjectURL(a.href);
+
+  // mark all files as saved
+  files.forEach(f => {
+    f.changes.clear();
+    const cc = document.getElementById(`cc_${f.id}`);
+    if (cc) cc.style.display = 'none';
+  });
+  updateChangesBadge();
 }
 
 // ── DRAG & DROP ───────────────────────────────────────────
@@ -1273,7 +1371,9 @@ function toggleTheme() {
 }
 
 // Initialise au chargement (dark par défaut)
-applyTheme(localStorage.getItem('seteditor-theme') || 'dark');
+const _saved  = localStorage.getItem('seteditor-theme');
+const _system = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+applyTheme(_saved || _system);
 </script>
 </body>
 </html>

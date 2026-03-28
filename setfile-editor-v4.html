@@ -1593,7 +1593,20 @@ function switchTab(tab) {
   document.querySelectorAll('.tab-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.tab === tab)
   );
-  if (files.length > 0) rebuildAll();
+  if (files.length === 0) return;
+
+  // Only rebuild DOM when switching to Profile Creator for the first time
+  // (virtual CHART/EXPERT rows not yet injected). All other switches just
+  // show/hide rows via applyFilters so edits are preserved.
+  const hasChr = files.some(f => f.fileType === 'chr');
+  const virtualRowsMissing = tab === 'profile' && !hasChr &&
+    !document.querySelector('tr.section-row[data-section="_virtual_chart"]');
+
+  if (virtualRowsMissing) {
+    rebuildAll();
+  } else {
+    applyFilters();
+  }
 }
 
 // ── THEME ─────────────────────────────────────────────────

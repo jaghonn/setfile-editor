@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MT5 Set File Editor</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0d0f18;
+  --surface: #13161f;
+  --surface2: #1a1d2e;
+  --border: #252840;
+  --border2: #2e3258;
+  --text: #c9cdd8;
+  --text-dim: #555a7a;
+  --text-muted: #3a3d55;
+  --accent: #7c6af7;
+  --accent-dim: #2d2860;
+  --gold: #f0b429;
+  --gold-dim: #2a2210;
+  --diff: #e05c5c;
+  --diff-dim: #2a1010;
+  --green: #3ecf8e;
+  --green-dim: #0a2018;
+  --col-w: 180px;
+  --label-w: 240px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── HEADER ─────────────────────────────────────────── */
+#topbar {
+  height: 52px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  position: sticky;
+  top: 0;
+  z-index: 200;
+}
+
+#topbar h1 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-right: 8px;
+}
+
+.sep { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
+.spacer { flex: 1; }
+
+.btn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.12s;
+  white-space: nowrap;
+  display: flex; align-items: center; gap: 6px;
+}
+.btn-ghost { background: transparent; color: var(--text-dim); border-color: var(--border); }
+.btn-ghost:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+.btn-accent { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+.btn-accent:hover { background: var(--accent); color: #fff; }
+.btn-save { background: var(--green-dim); color: var(--green); border-color: #1a6644; }
+.btn-save:hover { background: var(--green); color: #000; }
+.btn-save:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.badge {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.badge-gold { background: var(--gold-dim); color: var(--gold); }
+.badge-diff { background: var(--diff-dim); color: var(--diff); }
+
+input[type=file] { display: none; }
+
+/* ── TOOLBAR ─────────────────────────────────────────── */
+#toolbar {
+  height: 40px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  position: sticky;
+  top: 52px;
+  z-index: 199;
+}
+
+#search {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 4px 10px;
+  font-size: 12px;
+  width: 220px;
+}
+#search:focus { outline: none; border-color: var(--accent); }
+
+.toggle-btn {
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.toggle-btn.active {
+  background: var(--diff-dim);
+  color: var(--diff);
+  border-color: var(--diff);
+}
+
+#diff-count { font-size: 11px; color: var(--text-dim); }
+
+/* ── DROP ZONE ───────────────────────────────────────── */
+#dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 92px);
+  gap: 14px;
+  color: var(--text-dim);
+}
+#dropzone.drag-over { background: var(--accent-dim); }
+#dropzone svg { opacity: 0.3; }
+#dropzone h2 { font-size: 18px; font-weight: 600; color: var(--text); }
+#dropzone p { font-size: 13px; }
+
+/* ── TABLE WRAPPER ───────────────────────────────────── */
+#table-wrap {
+  display: none;
+  overflow: auto;
+  height: calc(100vh - 92px);
+}
+
+table {
+  border-collapse: collapse;
+  min-width: 100%;
+  font-size: 12px;
+}
+
+/* ── HEADER ROW ──────────────────────────────────────── */
+thead tr {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+thead th {
+  background: var(--surface);
+  border-bottom: 2px solid var(--border2);
+  border-right: 1px solid var(--border);
+  padding: 0;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+thead th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 101;
+  width: var(--label-w);
+  min-width: var(--label-w);
+}
+
+.th-inner {
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: stretch;
+}
+
+.th-filename {
+  font-weight: 700;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 1px 4px;
+  margin: -1px -4px;
+}
+.th-filename:hover { background: var(--surface2); }
+
+.th-filename-input {
+  font-weight: 700;
+  color: var(--text);
+  background: var(--surface2);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 12px;
+  line-height: 1.4;
+  height: calc(1.4em * 3 + 6px);
+  width: 100%;
+  outline: none;
+  font-family: inherit;
+  resize: none;
+  display: block;
+  overflow: hidden;
+  word-break: break-all;
+  box-sizing: border-box;
+}
+
+.th-actions {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.btn-tiny {
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 600;
+  transition: all 0.1s;
+}
+.btn-tiny-save { background: var(--green-dim); color: var(--green); border-color: #1a6644; }
+.btn-tiny-save:hover { background: var(--green); color: #000; }
+.btn-tiny-remove { background: transparent; color: var(--text-dim); border-color: var(--border); }
+.btn-tiny-remove:hover { background: var(--diff-dim); color: var(--diff); border-color: var(--diff); }
+
+.th-change-count { font-size: 10px; color: var(--gold); }
+
+/* ── SECTION ROWS ────────────────────────────────────── */
+tr.section-row td {
+  background: var(--surface2);
+  border-top: 2px solid var(--border2);
+  border-bottom: 1px solid var(--border2);
+  padding: 6px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+tr.section-row td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 10;
+}
+
+/* ── PARAM ROWS ──────────────────────────────────────── */
+tr.param-row {
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+}
+tr.param-row:hover { background: rgba(124,106,247,0.04); }
+tr.param-row.hidden { display: none; }
+
+tr.param-row td {
+  border-right: 1px solid var(--border);
+  padding: 0;
+  vertical-align: middle;
+}
+
+td.label-cell {
+  position: sticky;
+  left: 0;
+  z-index: 10;
+  background: var(--surface);
+  width: var(--label-w);
+  min-width: var(--label-w);
+  padding: 6px 12px;
+  border-right: 2px solid var(--border2);
+}
+tr.param-row:hover td.label-cell { background: #14172a; }
+
+.param-name {
+  font-family: 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
+  color: var(--text-dim);
+  word-break: break-word;
+  line-height: 1.4;
+}
+.param-name.opt { color: var(--gold); }
+
+.param-range {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 2px;
+  font-family: monospace;
+}
+
+/* ── VALUE CELLS ─────────────────────────────────────── */
+td.value-cell {
+  width: var(--col-w);
+  min-width: var(--col-w);
+  max-width: var(--col-w);
+  background: var(--bg);
+  position: relative;
+}
+
+td.value-cell.diff-cell { background: var(--diff-dim); }
+td.value-cell.modified-cell { background: #1c1a0a; }
+
+.cell-input {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  padding: 7px 10px;
+  font-size: 12px;
+  font-family: 'SF Mono', 'JetBrains Mono', monospace;
+  outline: none;
+}
+.cell-input:focus {
+  background: rgba(124,106,247,0.08);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.cell-input.modified { color: var(--gold); }
+td.diff-cell .cell-input { color: var(--diff); }
+
+/* Toggle in cell */
+.cell-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 10px;
+  height: 100%;
+  cursor: pointer;
+}
+.toggle {
+  position: relative; width: 32px; height: 18px; flex-shrink: 0;
+}
+.toggle input { opacity: 0; position: absolute; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute; inset: 0;
+  background: var(--border2);
+  border-radius: 18px;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.toggle-slider:before {
+  content: '';
+  position: absolute;
+  width: 12px; height: 12px;
+  left: 3px; top: 3px;
+  background: var(--text-dim);
+  border-radius: 50%;
+  transition: 0.15s;
+}
+.toggle input:checked + .toggle-slider { background: #2d2a5e; }
+.toggle input:checked + .toggle-slider:before {
+  transform: translateX(14px);
+  background: var(--accent);
+}
+td.diff-cell .toggle input:checked + .toggle-slider { background: var(--diff-dim); }
+td.diff-cell .toggle input:checked + .toggle-slider:before { background: var(--diff); }
+.toggle-val {
+  font-size: 11px;
+  font-family: monospace;
+  color: var(--text-dim);
+  min-width: 32px;
+}
+td.diff-cell .toggle-val { color: var(--diff); }
+
+/* ── EMPTY STATE ─────────────────────────────────────── */
+#no-diff {
+  display: none;
+  text-align: center;
+  padding: 60px;
+  color: var(--text-dim);
+  font-size: 14px;
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div id="topbar">
+  <h1>MT5 Set Editor</h1>
+  <div class="sep"></div>
+  <button class="btn btn-accent" onclick="document.getElementById('file-input').click()">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Add Files
+  </button>
+  <button class="btn btn-ghost" id="reset-btn" onclick="resetAll()" style="display:none">Reset</button>
+  <button class="btn btn-save" id="save-all-btn" onclick="saveAll()" disabled>
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+    Save All
+  </button>
+  <div class="spacer"></div>
+  <span class="badge badge-gold" id="changes-badge" style="display:none">0 changes</span>
+  <input type="file" id="file-input" accept=".set" multiple onchange="addFiles(this)">
+</div>
+
+<!-- TOOLBAR -->
+<div id="toolbar" style="display:none">
+  <input type="text" id="search" placeholder="Search params…" oninput="applyFilters()">
+  <button class="toggle-btn" id="diff-btn" onclick="toggleDiffOnly()">Show differences only</button>
+  <span id="diff-count"></span>
+</div>
+
+<!-- DROP ZONE -->
+<div id="dropzone">
+  <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+    <polyline points="14,2 14,8 20,8"/>
+    <line x1="12" y1="18" x2="12" y2="12"/>
+    <line x1="9" y1="15" x2="15" y2="15"/>
+  </svg>
+  <h2>Drop .set files here</h2>
+  <p>or click to choose files — open multiple files to compare & edit side by side</p>
+  <button class="btn btn-accent" style="margin-top:4px" onclick="document.getElementById('file-input').click()">Choose Files</button>
+</div>
+
+<!-- TABLE -->
+<div id="table-wrap">
+  <table id="main-table">
+    <thead id="table-head"><tr><th><div class="th-inner"><span style="color:var(--text-dim);font-size:11px">PARAMETER</span></div></th></tr></thead>
+    <tbody id="table-body"></tbody>
+  </table>
+  <div id="no-diff">No differences found — all values are identical across files</div>
+</div>
+
+<script>
+// ── STATE ────────────────────────────────────────────────
+const files = [];      // { id, name, buffer, parsedLines, paramMap }
+const loadingNames = new Set(); // track files currently being read
+let diffOnly = false;
+let totalChanges = 0;
+
+// ── FILE LOADING ─────────────────────────────────────────
+function addFiles(input) {
+  const list = Array.from(input.files).filter(f =>
+    !files.some(e => e && e.name === f.name) && !loadingNames.has(f.name)
+  );
+  input.value = '';
+  if (list.length === 0) return;
+  list.forEach(f => loadingNames.add(f.name));
+  let pending = list.length;
+  const startIndex = files.length;
+  // Pre-allocate slots to preserve selection order
+  list.forEach((_, i) => files.push(null));
+  list.forEach((file, i) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const buffer = e.target.result;
+      const decoded = decodeBuffer(buffer);
+      const parsed = parseSetFile(decoded);
+      const paramMap = buildParamMap(parsed);
+      files[startIndex + i] = { id: `f${Date.now()}_${Math.random()}`, name: file.name, buffer, parsed, paramMap, changes: new Set() };
+      loadingNames.delete(file.name);
+      pending--;
+      if (pending === 0) rebuildAll();
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function decodeBuffer(buf) {
+  const b = new Uint8Array(buf);
+  if (b[0] === 0xFF && b[1] === 0xFE) return new TextDecoder('utf-16le').decode(buf);
+  if (b[0] === 0xFE && b[1] === 0xFF) return new TextDecoder('utf-16be').decode(buf);
+  return new TextDecoder('utf-8').decode(buf);
+}
+
+// ── PARSING ──────────────────────────────────────────────
+function parseSetFile(text) {
+  return text.split(/\r?\n/).map((raw, idx) => {
+    const line = raw.trim();
+    if (!line) return { type: 'empty', raw, idx };
+    if (line.startsWith(';')) return { type: 'comment', raw, idx };
+
+    const eq = line.indexOf('=');
+    if (eq === -1) return { type: 'unknown', raw, idx };
+
+    const key = line.slice(0, eq).trim();
+    const rest = line.slice(eq + 1);
+
+    if (rest.includes('||')) {
+      const [value, def, mn, mx, flag] = rest.split('||');
+      if (value.trim().startsWith('---')) {
+        return { type: 'section', raw, idx, key, title: extractTitle(value) };
+      }
+      const isBoolean = (value === 'true' || value === 'false') && mn === '0' && mx === 'true';
+      return { type: 'param', raw, idx, key, value, def, mn, mx, opt: (flag||'').trim().toUpperCase() === 'Y', isBoolean };
+    }
+
+    if (rest.trim().startsWith('---')) {
+      return { type: 'section', raw, idx, key, title: extractTitle(rest) };
+    }
+
+    return { type: 'simple', raw, idx, key, value: rest };
+  });
+}
+
+function extractTitle(s) {
+  return s.trim().replace(/^-+\s*/, '').replace(/\s*-+$/, '').trim();
+}
+
+function buildParamMap(parsed) {
+  const map = {};
+  parsed.forEach(l => {
+    if (l.type === 'param' || l.type === 'simple') map[l.key] = l;
+  });
+  return map;
+}
+
+// ── UNIFIED ROW ORDER ─────────────────────────────────────
+function buildUnifiedRows() {
+  // Use first file as template, then append any extra keys from other files
+  const seen = new Set();
+  const rows = [];
+
+  for (const file of files) {
+    for (const line of file.parsed) {
+      if (line.type === 'section') {
+        const id = 's:' + line.key;
+        if (!seen.has(id)) { seen.add(id); rows.push({ ...line }); }
+      } else if (line.type === 'param' || line.type === 'simple') {
+        if (!seen.has(line.key)) { seen.add(line.key); rows.push({ ...line }); }
+      }
+    }
+  }
+  return rows;
+}
+
+// ── REBUILD ───────────────────────────────────────────────
+function rebuildAll() {
+  // Remove any null slots (shouldn't happen after all readers complete, but safety)
+  const nulls = files.indexOf(null);
+  if (nulls !== -1) return; // still loading, wait for all to finish
+  if (files.length === 0) return;
+
+  document.getElementById('dropzone').style.display = 'none';
+  document.getElementById('table-wrap').style.display = 'block';
+  document.getElementById('toolbar').style.display = 'flex';
+  document.getElementById('save-all-btn').disabled = false;
+  document.getElementById('reset-btn').style.display = 'flex';
+
+  buildHeader();
+  buildBody();
+  applyFilters();
+}
+
+function buildHeader() {
+  const tr = document.getElementById('table-head').querySelector('tr');
+  // Remove old file columns
+  while (tr.children.length > 1) tr.removeChild(tr.lastChild);
+
+  files.forEach((file, fi) => {
+    const th = document.createElement('th');
+    th.id = `th_${file.id}`;
+    th.innerHTML = `<div class="th-inner">
+      <span class="th-filename" id="fn_${file.id}" title="Click to rename" onclick="startRename('${file.id}')">${file.name}</span>
+      <div class="th-actions">
+        <button class="btn-tiny btn-tiny-save" onclick="saveFile('${file.id}')">Save</button>
+        <button class="btn-tiny btn-tiny-remove" onclick="removeFile('${file.id}')">✕</button>
+        <span class="th-change-count" id="cc_${file.id}" style="display:none"></span>
+      </div>
+    </div>`;
+    tr.appendChild(th);
+  });
+}
+
+function buildBody() {
+  const tbody = document.getElementById('table-body');
+  tbody.innerHTML = '';
+
+  const rows = buildUnifiedRows();
+
+  rows.forEach(row => {
+    if (row.type === 'section') {
+      const tr = document.createElement('tr');
+      tr.className = 'section-row';
+      tr.dataset.section = row.key;
+      const td = document.createElement('td');
+      td.colSpan = files.length + 1;
+      td.textContent = row.title || row.key;
+      tr.appendChild(td);
+      tbody.appendChild(tr);
+      return;
+    }
+
+    if (row.type !== 'param' && row.type !== 'simple') return;
+
+    const tr = document.createElement('tr');
+    tr.className = 'param-row';
+    tr.dataset.key = row.key.toLowerCase();
+    tr.id = `row_${row.key}`;
+
+    // Label cell
+    const labelTd = document.createElement('td');
+    labelTd.className = 'label-cell';
+    const anyOpt = files.some(f => f.paramMap[row.key]?.opt);
+    labelTd.innerHTML = `<div class="param-name${anyOpt ? ' opt' : ''}">${row.key}</div>`;
+    // Add range hint from first file that has it
+    const firstWithMeta = files.find(f => f.paramMap[row.key]?.mn !== undefined);
+    if (firstWithMeta) {
+      const p = firstWithMeta.paramMap[row.key];
+      if (p.mn && p.mx && !(p.mn === '0' && p.mx === 'true')) {
+        labelTd.innerHTML += `<div class="param-range">${p.mn} – ${p.mx}</div>`;
+      }
+    }
+    tr.appendChild(labelTd);
+
+    // Value cells
+    files.forEach((file, fi) => {
+      const td = document.createElement('td');
+      td.className = 'value-cell';
+      td.dataset.fileId = file.id;
+      td.dataset.key = row.key;
+
+      const paramLine = file.paramMap[row.key];
+      const value = paramLine ? paramLine.value : '';
+      const isBoolean = paramLine?.isBoolean;
+
+      if (isBoolean) {
+        td.innerHTML = `<label class="cell-toggle" title="Click to toggle">
+          <span class="toggle">
+            <input type="checkbox" id="inp_${file.id}_${row.key}" ${value === 'true' ? 'checked' : ''}
+              onchange="onCellChange('${file.id}','${row.key}',this)">
+            <span class="toggle-slider"></span>
+          </span>
+          <span class="toggle-val" id="lbl_${file.id}_${row.key}">${value}</span>
+        </label>`;
+      } else {
+        td.innerHTML = `<input class="cell-input" id="inp_${file.id}_${row.key}"
+          value="${escHtml(value)}" spellcheck="false"
+          oninput="onCellChange('${file.id}','${row.key}',this)">`;
+      }
+
+      tr.appendChild(td);
+    });
+
+    tbody.appendChild(tr);
+  });
+
+  updateDiffHighlight();
+}
+
+function escHtml(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+}
+
+// ── DIFF HIGHLIGHT ────────────────────────────────────────
+function updateDiffHighlight() {
+  let diffRows = 0;
+  document.querySelectorAll('.param-row').forEach(tr => {
+    const key = tr.dataset.key;
+    const cells = tr.querySelectorAll('.value-cell');
+    const values = [];
+    cells.forEach(td => {
+      const inp = td.querySelector('input[type=checkbox]');
+      if (inp) values.push(String(inp.checked));
+      else {
+        const txt = td.querySelector('input.cell-input');
+        values.push(txt ? txt.value : '');
+      }
+    });
+    const allSame = values.length > 1 && values.every(v => v === values[0]);
+    if (!allSame && values.length > 1) diffRows++;
+
+    cells.forEach((td, i) => {
+      if (!td.classList.contains('modified-cell')) {
+        td.classList.toggle('diff-cell', !allSame && values.length > 1);
+      }
+    });
+    tr.dataset.hasDiff = (!allSame && values.length > 1) ? '1' : '0';
+  });
+
+  const el = document.getElementById('diff-count');
+  el.textContent = `${diffRows} param${diffRows !== 1 ? 's' : ''} differ`;
+  return diffRows;
+}
+
+// ── CELL CHANGE ───────────────────────────────────────────
+function onCellChange(fileId, key, el) {
+  const file = files.find(f => f.id === fileId);
+  if (!file) return;
+
+  // Update label for boolean
+  const lbl = document.getElementById(`lbl_${fileId}_${key}`);
+  if (lbl) lbl.textContent = el.checked ? 'true' : 'false';
+
+  const inputEl = document.getElementById(`inp_${fileId}_${key}`);
+  if (inputEl) inputEl.classList.add('modified');
+
+  const td = inputEl?.closest('td') || el.closest('td');
+  if (td) { td.classList.remove('diff-cell'); td.classList.add('modified-cell'); }
+
+  file.changes.add(key);
+  totalChanges++;
+
+  const ccEl = document.getElementById(`cc_${fileId}`);
+  if (ccEl) {
+    ccEl.textContent = `${file.changes.size} change${file.changes.size !== 1 ? 's' : ''}`;
+    ccEl.style.display = 'inline';
+  }
+
+  updateChangesBadge();
+  updateDiffHighlight();
+}
+
+function updateChangesBadge() {
+  const total = files.reduce((s, f) => s + f.changes.size, 0);
+  const el = document.getElementById('changes-badge');
+  if (total > 0) {
+    el.textContent = `${total} change${total !== 1 ? 's' : ''}`;
+    el.style.display = 'inline';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+// ── FILTERS ───────────────────────────────────────────────
+function applyFilters() {
+  const q = document.getElementById('search').value.toLowerCase();
+  let visibleDiff = 0;
+
+  document.querySelectorAll('.param-row').forEach(tr => {
+    const key = tr.dataset.key || '';
+    const matchSearch = !q || key.includes(q);
+    const matchDiff = !diffOnly || tr.dataset.hasDiff === '1';
+    const show = matchSearch && matchDiff;
+    tr.classList.toggle('hidden', !show);
+    if (show && tr.dataset.hasDiff === '1') visibleDiff++;
+  });
+
+  document.getElementById('no-diff').style.display =
+    diffOnly && visibleDiff === 0 ? 'block' : 'none';
+}
+
+function toggleDiffOnly() {
+  diffOnly = !diffOnly;
+  document.getElementById('diff-btn').classList.toggle('active', diffOnly);
+  applyFilters();
+}
+
+// ── RENAME FILE ───────────────────────────────────────────
+function startRename(id) {
+  const span = document.getElementById(`fn_${id}`);
+  if (!span || span.querySelector('input')) return;
+  const file = files.find(f => f.id === id);
+  if (!file) return;
+
+  const input = document.createElement('textarea');
+  input.className = 'th-filename-input';
+  input.value = file.name;
+  input.onclick = e => e.stopPropagation();
+  input.onblur = () => commitRename(id, input.value);
+  input.onkeydown = e => {
+    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+    if (e.key === 'Escape') { input.value = file.name; input.blur(); }
+  };
+
+  span.textContent = '';
+  span.appendChild(input);
+  input.focus();
+  input.select();
+}
+
+function commitRename(id, newName) {
+  const file = files.find(f => f.id === id);
+  if (!file) return;
+  const trimmed = newName.trim();
+  const name = trimmed || file.name;
+  file.name = name;
+
+  const span = document.getElementById(`fn_${id}`);
+  if (span) {
+    span.textContent = name;
+    span.title = name;
+  }
+}
+
+// ── RESET ALL ─────────────────────────────────────────────
+function resetAll() {
+  files.length = 0;
+  loadingNames.clear();
+  document.getElementById('table-wrap').style.display = 'none';
+  document.getElementById('toolbar').style.display = 'none';
+  document.getElementById('dropzone').style.display = 'flex';
+  document.getElementById('save-all-btn').disabled = true;
+  document.getElementById('reset-btn').style.display = 'none';
+  document.getElementById('changes-badge').style.display = 'none';
+}
+
+// ── REMOVE FILE ───────────────────────────────────────────
+function removeFile(id) {
+  const idx = files.findIndex(f => f.id === id);
+  if (idx === -1) return;
+  files.splice(idx, 1);
+  if (files.length === 0) {
+    document.getElementById('table-wrap').style.display = 'none';
+    document.getElementById('toolbar').style.display = 'none';
+    document.getElementById('dropzone').style.display = 'flex';
+    document.getElementById('save-all-btn').disabled = true;
+    document.getElementById('changes-badge').style.display = 'none';
+  } else {
+    rebuildAll();
+  }
+}
+
+// ── SAVE ─────────────────────────────────────────────────
+function collectFileContent(file) {
+  return file.parsed.map(line => {
+    if (line.type === 'param') {
+      const inp = document.getElementById(`inp_${file.id}_${line.key}`);
+      if (!inp) return line.raw;
+      const val = inp.type === 'checkbox' ? (inp.checked ? 'true' : 'false') : inp.value;
+      return `${line.key}=${val}||${line.def}||${line.mn}||${line.mx}||${line.opt ? 'Y' : 'N'}`;
+    }
+    if (line.type === 'simple') {
+      const inp = document.getElementById(`inp_${file.id}_${line.key}`);
+      return inp ? `${line.key}=${inp.value}` : line.raw;
+    }
+    return line.raw;
+  }).join('\r\n');
+}
+
+function downloadAsUtf16(filename, text) {
+  const bom = new Uint8Array([0xFF, 0xFE]);
+  const utf16 = new Uint8Array(text.length * 2);
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i);
+    utf16[i * 2] = c & 0xFF;
+    utf16[i * 2 + 1] = (c >> 8) & 0xFF;
+  }
+  const buf = new Uint8Array(bom.length + utf16.length);
+  buf.set(bom); buf.set(utf16, bom.length);
+  const blob = new Blob([buf], { type: 'application/octet-stream' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function saveFile(id) {
+  const file = files.find(f => f.id === id);
+  if (!file) return;
+  downloadAsUtf16(file.name, collectFileContent(file));
+  file.changes.clear();
+  const cc = document.getElementById(`cc_${id}`);
+  if (cc) cc.style.display = 'none';
+  updateChangesBadge();
+}
+
+function saveAll() {
+  files.forEach((f, i) => setTimeout(() => saveFile(f.id), i * 150));
+}
+
+// ── DRAG & DROP ───────────────────────────────────────────
+const dz = document.getElementById('dropzone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault();
+  e.stopPropagation();
+  dz.classList.remove('drag-over');
+  const input = document.getElementById('file-input');
+  // Simulate file selection via DataTransfer
+  const dt = new DataTransfer();
+  Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.set')).forEach(f => dt.items.add(f));
+  if (dt.files.length > 0) {
+    input.files = dt.files;
+    addFiles(input);
+  }
+});
+
+// Allow dragging onto the table too
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => {
+  e.preventDefault();
+  const setFiles = Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.set'));
+  if (setFiles.length === 0) return;
+  const dt = new DataTransfer();
+  setFiles.forEach(f => dt.items.add(f));
+  const input = document.getElementById('file-input');
+  input.files = dt.files;
+  addFiles(input);
+});
+</script>
+</body>
+</html>

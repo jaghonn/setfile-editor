@@ -324,11 +324,18 @@ tr.param-row.hidden  { display: none; }
 tr.section-row.hidden { display: none; }
 
 /* Profile Creator — section block headers */
-tr.section-row[data-chr-block="chart"] td { border-top-color: #2d7aff; color: #2d7aff; }
-tr.section-row[data-chr-block="expert"] td { border-top-color: var(--gold); color: var(--gold); }
+tr.section-row[data-chr-block="chart"] td {
+  border-top-color: #2d7aff; color: #2d7aff;
+  background: rgba(45,122,255,0.13);
+}
+tr.section-row[data-chr-block="expert"] td {
+  border-top-color: var(--gold); color: var(--gold);
+  background: var(--gold-dim);
+}
 tr.section-row[data-chr-block="window"],
 tr.section-row[data-chr-block="indicator"] { opacity: 0.6; }
-[data-theme="light"] tr.section-row[data-chr-block="chart"] td { border-top-color: #1a5ccc; color: #1a5ccc; }
+[data-theme="light"] tr.section-row[data-chr-block="chart"] td { border-top-color: #1a5ccc; color: #1a5ccc; background: rgba(26,92,204,0.08); }
+[data-theme="light"] tr.section-row[data-chr-block="expert"] td { border-top-color: var(--gold); color: var(--gold); }
 
 tr.param-row td {
   border-right: 1px solid var(--border);
@@ -792,6 +799,9 @@ function buildUnifiedRows() {
     };
     injectSection('_virtual_chart',  'CHART',  'chart',  PROFILE_CHART_DEFAULTS);
     injectSection('_virtual_expert', 'EXPERT', 'expert', PROFILE_EXPERT_DEFAULTS);
+    // INPUTS separator before the .set params
+    rows.push({ type: 'section', key: '_virtual_inputs', title: 'INPUTS', chrBlock: 'inputs' });
+    seen.add('s:_virtual_inputs');
   }
 
   for (const file of files) {

@@ -127,6 +127,9 @@ body {
 .btn-save { background: var(--green-dim); color: var(--green); border-color: var(--save-border); }
 .btn-save:hover { background: var(--green); color: #000; }
 .btn-save:disabled { opacity: 0.3; cursor: not-allowed; }
+.btn-chr { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+.btn-chr:hover { background: var(--accent); color: #fff; }
+.btn-chr:disabled { opacity: 0.3; cursor: not-allowed; }
 
 .badge {
   padding: 2px 8px;
@@ -291,6 +294,8 @@ thead th:first-child {
 }
 .btn-tiny-save { background: var(--green-dim); color: var(--green); border-color: var(--save-border); }
 .btn-tiny-save:hover { background: var(--green); color: #000; }
+.btn-tiny-chr { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+.btn-tiny-chr:hover { background: var(--accent); color: #fff; }
 .btn-tiny-remove { background: transparent; color: var(--text-dim); border-color: var(--border); }
 .btn-tiny-remove:hover { background: var(--diff-dim); color: var(--diff); border-color: var(--diff); }
 
@@ -584,7 +589,11 @@ td.diff-cell .toggle-val { color: var(--diff); }
   <button class="btn btn-ghost" id="reset-btn" onclick="resetAll()" style="display:none">Reset</button>
   <button class="btn btn-save" id="save-all-btn" onclick="saveAll()" disabled>
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-    Save All
+    Save All .set
+  </button>
+  <button class="btn btn-chr" id="save-all-chr-btn" onclick="saveAllChr()" disabled>
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+    Save All .chr
   </button>
   <div class="spacer"></div>
   <span class="badge badge-gold" id="changes-badge" style="display:none">0 changes</span>
@@ -829,6 +838,7 @@ function rebuildAll() {
   document.getElementById('toolbar').style.display = 'flex';
   document.getElementById('batch-toolbar').style.display = 'flex';
   document.getElementById('save-all-btn').disabled = false;
+  document.getElementById('save-all-chr-btn').disabled = false;
   document.getElementById('reset-btn').style.display = 'flex';
 
   if (autoSwitchToProfile) {
@@ -857,7 +867,8 @@ function buildHeader() {
     th.innerHTML = `<div class="th-inner">
       <span class="th-filename" id="fn_${file.id}" title="Click to rename" onclick="startRename('${file.id}')">${file.name}</span>
       <div class="th-actions">
-        <button class="btn-tiny btn-tiny-save" onclick="saveFile('${file.id}')">Save</button>
+        <button class="btn-tiny btn-tiny-save" onclick="saveFile('${file.id}')">Save .set</button>
+        <button class="btn-tiny btn-tiny-chr"  onclick="saveChrFile('${file.id}')">Save .chr</button>
         <button class="btn-tiny btn-tiny-remove" onclick="removeFile('${file.id}')">✕</button>
         <span class="th-change-count" id="cc_${file.id}" style="display:none"></span>
       </div>
@@ -1104,6 +1115,7 @@ function resetAll() {
   document.getElementById('recap-panel').style.display = 'none';
   document.getElementById('dropzone').style.display = 'flex';
   document.getElementById('save-all-btn').disabled = true;
+  document.getElementById('save-all-chr-btn').disabled = true;
   document.getElementById('reset-btn').style.display = 'none';
   document.getElementById('changes-badge').style.display = 'none';
   lastBatchSnapshot = null;
@@ -1121,6 +1133,7 @@ function removeFile(id) {
     document.getElementById('recap-panel').style.display = 'none';
     document.getElementById('dropzone').style.display = 'flex';
     document.getElementById('save-all-btn').disabled = true;
+    document.getElementById('save-all-chr-btn').disabled = true;
     document.getElementById('changes-badge').style.display = 'none';
     lastBatchSnapshot = null;
   } else {
@@ -1150,6 +1163,75 @@ function collectFileContent(file) {
     }
     return line.raw;
   }).join('\r\n');
+}
+
+// ── SAVE AS .CHR ─────────────────────────────────────────
+function buildChrContent(file) {
+  const lines = [];
+  lines.push('<chart>');
+
+  // CHART params — read from DOM inputs (virtual or actual .chr values)
+  PROFILE_CHART_DEFAULTS.forEach(([key, defVal]) => {
+    const inp = document.getElementById(`inp_${file.id}_${key}`);
+    const val = inp ? inp.value : (file.paramMap[key]?.value ?? defVal);
+    lines.push(`${key}=${val}`);
+  });
+
+  lines.push('<expert>');
+
+  // EXPERT params
+  PROFILE_EXPERT_DEFAULTS.forEach(([key, defVal]) => {
+    const inp = document.getElementById(`inp_${file.id}_${key}`);
+    const val = inp ? inp.value : (file.paramMap[key]?.value ?? defVal);
+    lines.push(`${key}=${val}`);
+  });
+
+  lines.push('<inputs>');
+
+  // INPUTS — .set params (type:'param') or .chr inputs-block params (type:'simple', chrBlock:'inputs')
+  const written = new Set();
+  file.parsed.forEach(line => {
+    if (line.type === 'param') {
+      const inp = document.getElementById(`inp_${file.id}_${line.key}`);
+      if (!inp) return;
+      const val = inp.type === 'checkbox' ? (inp.checked ? 'true' : 'false') : inp.value;
+      lines.push(`${line.key}=${val}||${line.def}||${line.mn}||${line.mx}||${line.opt ? 'Y' : 'N'}`);
+    } else if (line.type === 'simple' && (!line.chrBlock || line.chrBlock === 'inputs')) {
+      if (written.has(line.key)) return;
+      const inp = document.getElementById(`inp_${file.id}_${line.key}`);
+      if (!inp) return;
+      written.add(line.key);
+      const val = inp.type === 'checkbox' ? (inp.checked ? 'true' : 'false') : inp.value;
+      lines.push(`${line.key}=${val}`);
+    }
+  });
+
+  lines.push('</inputs>');
+  lines.push('</expert>');
+  lines.push('</chart>');
+  return lines.join('\r\n');
+}
+
+function chrFilename(name) {
+  return name.replace(/\.[^.]+$/, '') + '.chr';
+}
+
+function saveChrFile(id) {
+  const file = files.find(f => f.id === id);
+  if (!file) return;
+  downloadAsUtf16(chrFilename(file.name), buildChrContent(file));
+}
+
+function saveAllChr() {
+  if (files.length === 1) { saveChrFile(files[0].id); return; }
+  const entries = files.map(f => ({ name: chrFilename(f.name), data: buildFileBytes(buildChrContent(f)) }));
+  const zip  = buildZip(entries);
+  const blob = new Blob([zip], { type: 'application/zip' });
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = 'profiles.zip';
+  a.click();
+  URL.revokeObjectURL(a.href);
 }
 
 // ── UTF-16 LE ENCODER ────────────────────────────────────

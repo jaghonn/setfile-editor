@@ -855,6 +855,8 @@ function rebuildAll() {
     document.querySelectorAll('.tab-btn').forEach(b =>
       b.classList.toggle('active', b.dataset.tab === 'profile')
     );
+    document.body.classList.remove('tab-set');
+    document.body.classList.add('tab-profile');
     autoSwitchToProfile = false;
   }
 

@@ -1,0 +1,1490 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MT5 Set File Editor</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0d0f18;
+  --surface: #13161f;
+  --surface2: #1a1d2e;
+  --border: #252840;
+  --border2: #2e3258;
+  --text: #c9cdd8;
+  --text-dim: #555a7a;
+  --text-muted: #3a3d55;
+  --accent: #7c6af7;
+  --accent-dim: #2d2860;
+  --gold: #f0b429;
+  --gold-dim: #2a2210;
+  --diff: #e05c5c;
+  --diff-dim: #2a1010;
+  --green: #3ecf8e;
+  --green-dim: #0a2018;
+  --col-w: 180px;
+  --label-w: 240px;
+  --modified-bg: #1c1a0a;
+  --toggle-checked-bg: #2d2a5e;
+  --label-hover-bg: #14172a;
+  --save-border: #1a6644;
+  --cell-focus-bg: rgba(124,106,247,0.08);
+  --row-hover-bg: rgba(124,106,247,0.04);
+}
+
+[data-theme="light"] {
+  --bg: #f4f5fb;
+  --surface: #ffffff;
+  --surface2: #eceef8;
+  --border: #d5d8ef;
+  --border2: #bec2df;
+  --text: #1a1d2e;
+  --text-dim: #5a5f80;
+  --text-muted: #9a9fba;
+  --accent: #5a4fcf;
+  --accent-dim: #edeafd;
+  --gold: #8a6000;
+  --gold-dim: #fff3cc;
+  --diff: #b03030;
+  --diff-dim: #fce8e8;
+  --green: #1a7a50;
+  --green-dim: #d4f5e8;
+  --modified-bg: #fffae0;
+  --toggle-checked-bg: #c5bff8;
+  --label-hover-bg: #e8eaf6;
+  --save-border: #0a6640;
+  --cell-focus-bg: rgba(90,79,207,0.07);
+  --row-hover-bg: rgba(90,79,207,0.04);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+  transition: background 0.2s, color 0.2s;
+}
+
+/* ── TABS ────────────────────────────────────────────── */
+.tab-group {
+  display: flex;
+  align-items: stretch;
+  height: 52px;
+  margin-left: -16px; /* flush with topbar edge */
+}
+.tab-btn {
+  padding: 0 18px;
+  height: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+.tab-btn:hover { color: var(--text); background: var(--surface2); }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* ── HEADER ─────────────────────────────────────────── */
+#topbar {
+  height: 52px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  position: sticky;
+  top: 0;
+  z-index: 200;
+}
+
+
+.sep { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
+.spacer { flex: 1; }
+
+.btn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.12s;
+  white-space: nowrap;
+  display: flex; align-items: center; gap: 6px;
+}
+.btn-ghost { background: transparent; color: var(--text-dim); border-color: var(--border); }
+.btn-ghost:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+.btn-accent { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+.btn-accent:hover { background: var(--accent); color: #fff; }
+.btn-save { background: var(--green-dim); color: var(--green); border-color: var(--save-border); }
+.btn-save:hover { background: var(--green); color: #000; }
+.btn-save:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.badge {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.badge-gold { background: var(--gold-dim); color: var(--gold); }
+.badge-diff { background: var(--diff-dim); color: var(--diff); }
+
+input[type=file] { display: none; }
+
+/* ── TOOLBAR ─────────────────────────────────────────── */
+#toolbar {
+  height: 40px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  position: sticky;
+  top: 52px;
+  z-index: 199;
+}
+
+#search {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 4px 10px;
+  font-size: 12px;
+  width: 220px;
+}
+#search:focus { outline: none; border-color: var(--accent); }
+
+.toggle-btn {
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.toggle-btn.active {
+  background: var(--diff-dim);
+  color: var(--diff);
+  border-color: var(--diff);
+}
+
+#diff-count { font-size: 11px; color: var(--text-dim); }
+
+/* ── DROP ZONE ───────────────────────────────────────── */
+#dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 92px);
+  gap: 14px;
+  color: var(--text-dim);
+}
+#dropzone.drag-over { background: var(--accent-dim); }
+#dropzone svg { opacity: 0.3; }
+#dropzone h2 { font-size: 18px; font-weight: 600; color: var(--text); }
+#dropzone p { font-size: 13px; }
+
+/* ── TABLE WRAPPER ───────────────────────────────────── */
+#table-wrap {
+  display: none;
+  overflow: auto;
+  height: calc(100vh - 136px);
+}
+
+table {
+  border-collapse: collapse;
+  min-width: 100%;
+  font-size: 12px;
+}
+
+/* ── HEADER ROW ──────────────────────────────────────── */
+thead tr {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+thead th {
+  background: var(--surface);
+  border-bottom: 2px solid var(--border2);
+  border-right: 1px solid var(--border);
+  padding: 0;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+thead th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 101;
+  width: var(--label-w);
+  min-width: var(--label-w);
+}
+
+.th-inner {
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: stretch;
+}
+
+.th-filename {
+  font-weight: 700;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 1px 4px;
+  margin: -1px -4px;
+}
+.th-filename:hover { background: var(--surface2); }
+
+.th-filename-input {
+  font-weight: 700;
+  color: var(--text);
+  background: var(--surface2);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 12px;
+  line-height: 1.4;
+  height: calc(1.4em * 3 + 6px);
+  width: 100%;
+  outline: none;
+  font-family: inherit;
+  resize: none;
+  display: block;
+  overflow: hidden;
+  word-break: break-all;
+  box-sizing: border-box;
+}
+
+.th-actions {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.btn-tiny {
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 600;
+  transition: all 0.1s;
+}
+.btn-tiny-save { background: var(--green-dim); color: var(--green); border-color: var(--save-border); }
+.btn-tiny-save:hover { background: var(--green); color: #000; }
+.btn-tiny-remove { background: transparent; color: var(--text-dim); border-color: var(--border); }
+.btn-tiny-remove:hover { background: var(--diff-dim); color: var(--diff); border-color: var(--diff); }
+
+.th-change-count { font-size: 10px; color: var(--gold); }
+
+/* ── SECTION ROWS ────────────────────────────────────── */
+tr.section-row td {
+  background: var(--surface2);
+  border-top: 2px solid var(--border2);
+  border-bottom: 1px solid var(--border2);
+  padding: 6px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+tr.section-row td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 10;
+}
+
+/* ── PARAM ROWS ──────────────────────────────────────── */
+tr.param-row {
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+}
+tr.param-row:hover { background: var(--row-hover-bg); }
+tr.param-row.hidden  { display: none; }
+tr.section-row.hidden { display: none; }
+
+/* Profile Creator — section block headers */
+tr.section-row[data-chr-block="chart"] td { border-top-color: #2d7aff; color: #2d7aff; }
+tr.section-row[data-chr-block="expert"] td { border-top-color: var(--gold); color: var(--gold); }
+tr.section-row[data-chr-block="window"],
+tr.section-row[data-chr-block="indicator"] { opacity: 0.6; }
+[data-theme="light"] tr.section-row[data-chr-block="chart"] td { border-top-color: #1a5ccc; color: #1a5ccc; }
+
+tr.param-row td {
+  border-right: 1px solid var(--border);
+  padding: 0;
+  vertical-align: middle;
+}
+
+td.label-cell {
+  position: sticky;
+  left: 0;
+  z-index: 10;
+  background: var(--surface);
+  width: var(--label-w);
+  min-width: var(--label-w);
+  padding: 6px 12px;
+  border-right: 2px solid var(--border2);
+}
+tr.param-row:hover td.label-cell { background: var(--label-hover-bg); }
+
+.param-name {
+  font-family: 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
+  color: var(--text-dim);
+  word-break: break-word;
+  line-height: 1.4;
+}
+.param-name.opt { color: var(--gold); }
+
+.param-range {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 2px;
+  font-family: monospace;
+}
+
+/* ── VALUE CELLS ─────────────────────────────────────── */
+td.value-cell {
+  width: var(--col-w);
+  min-width: var(--col-w);
+  max-width: var(--col-w);
+  background: var(--bg);
+  position: relative;
+}
+
+td.value-cell.diff-cell { background: var(--diff-dim); }
+td.value-cell.modified-cell { background: var(--modified-bg); }
+
+.cell-input {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  padding: 7px 10px;
+  font-size: 12px;
+  font-family: 'SF Mono', 'JetBrains Mono', monospace;
+  outline: none;
+}
+.cell-input:focus {
+  background: var(--cell-focus-bg);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.cell-input.modified { color: var(--gold); }
+td.diff-cell .cell-input { color: var(--diff); }
+
+/* Toggle in cell */
+.cell-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 10px;
+  height: 100%;
+  cursor: pointer;
+}
+.toggle {
+  position: relative; width: 32px; height: 18px; flex-shrink: 0;
+}
+.toggle input { opacity: 0; position: absolute; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute; inset: 0;
+  background: var(--border2);
+  border-radius: 18px;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.toggle-slider:before {
+  content: '';
+  position: absolute;
+  width: 12px; height: 12px;
+  left: 3px; top: 3px;
+  background: var(--text-dim);
+  border-radius: 50%;
+  transition: 0.15s;
+}
+.toggle input:checked + .toggle-slider { background: var(--toggle-checked-bg); }
+.toggle input:checked + .toggle-slider:before {
+  transform: translateX(14px);
+  background: var(--accent);
+}
+td.diff-cell .toggle input:checked + .toggle-slider { background: var(--diff-dim); }
+td.diff-cell .toggle input:checked + .toggle-slider:before { background: var(--diff); }
+.toggle-val {
+  font-size: 11px;
+  font-family: monospace;
+  color: var(--text-dim);
+  min-width: 32px;
+}
+td.diff-cell .toggle-val { color: var(--diff); }
+
+/* ── EMPTY STATE ─────────────────────────────────────── */
+#no-diff {
+  display: none;
+  text-align: center;
+  padding: 60px;
+  color: var(--text-dim);
+  font-size: 14px;
+}
+
+/* ── BATCH TOOLBAR ───────────────────────────────────── */
+#batch-toolbar {
+  height: 44px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border2);
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  position: sticky;
+  top: 92px;
+  z-index: 198;
+}
+
+#batch-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.batch-input {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 4px 10px;
+  font-size: 12px;
+  font-family: inherit;
+  height: 28px;
+}
+.batch-input:focus { outline: none; border-color: var(--accent); }
+
+#batch-param      { width: 200px; }
+#batch-value      { width: 140px; }
+#batch-value-bool { width: 140px; display: none;
+                    appearance: none; cursor: pointer; }
+
+.btn-patch { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+.btn-patch:hover { background: var(--accent); color: #fff; }
+
+.dryrun-wrap {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 12px; color: var(--text-dim);
+  cursor: pointer; user-select: none; margin-left: 4px;
+}
+.dryrun-wrap input { cursor: pointer; accent-color: var(--accent); }
+
+/* ── RECAP PANEL ─────────────────────────────────────── */
+#recap-panel {
+  display: none;
+  background: var(--surface);
+  border-bottom: 2px solid var(--border2);
+  position: sticky;
+  top: 136px;
+  z-index: 197;
+  max-height: 190px;
+  overflow-y: auto;
+}
+
+#recap-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 1;
+}
+
+#recap-summary { font-size: 12px; font-weight: 600; flex: 1; }
+#recap-summary.ok   { color: var(--green); }
+#recap-summary.warn { color: var(--text-dim); }
+#recap-summary.dry  { color: var(--accent); }
+
+.btn-undo {
+  background: var(--gold-dim); color: var(--gold);
+  border: 1px solid var(--gold); border-radius: 4px;
+  padding: 2px 10px; font-size: 11px; font-weight: 600;
+  cursor: pointer; transition: all 0.12s; display: none;
+}
+.btn-undo:hover { background: var(--gold); color: #000; }
+
+.recap-close {
+  background: transparent; border: none;
+  color: var(--text-muted); cursor: pointer;
+  font-size: 16px; line-height: 1; padding: 0 2px;
+}
+.recap-close:hover { color: var(--text); }
+
+.recap-row {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 16px;
+  font-size: 11px;
+  border-bottom: 1px solid var(--border);
+}
+.recap-row:last-child { border-bottom: none; }
+.recap-row.modified { background: rgba(240,180,41,0.04); }
+.recap-row.skipped  { opacity: 0.55; }
+
+.rr-icon { text-align: center; font-size: 12px; }
+.rr-file { font-family: 'SF Mono','JetBrains Mono',monospace; color: var(--text);
+           overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rr-change { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.rr-old  { color: var(--text-dim); font-family: monospace; }
+.rr-arr  { color: var(--text-muted); }
+.rr-new  { color: var(--gold); font-family: monospace; font-weight: 600; }
+.rr-skip { color: var(--text-muted); font-style: italic; }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div id="topbar">
+  <div class="tab-group">
+    <button class="tab-btn active" data-tab="set"     onclick="switchTab('set')">MT5 Set Editor</button>
+    <button class="tab-btn"        data-tab="profile" onclick="switchTab('profile')">Profile Creator</button>
+  </div>
+  <div class="sep"></div>
+  <button class="btn btn-accent" onclick="document.getElementById('file-input').click()">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Add Files
+  </button>
+  <button class="btn btn-ghost" id="reset-btn" onclick="resetAll()" style="display:none">Reset</button>
+  <button class="btn btn-save" id="save-all-btn" onclick="saveAll()" disabled>
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+    Save All
+  </button>
+  <div class="spacer"></div>
+  <span class="badge badge-gold" id="changes-badge" style="display:none">0 changes</span>
+  <div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end">
+    <span style="font-size:10px;color:var(--text-muted)">Created by <a href="https://t.me/basa2021" target="_blank" style="color:var(--text-dim);text-decoration:none;">t.me/basa2021</a></span>
+    <span style="font-size:10px;color:var(--text-muted)">Modified by <a href="https://t.me/Jaghonn" target="_blank" style="color:var(--text-dim);text-decoration:none;">t.me/Jaghonn</a></span>
+  </div>
+  <button class="btn btn-ghost" id="theme-btn" onclick="toggleTheme()" title="Switch to light theme" style="padding:6px 10px;"></button>
+  <input type="file" id="file-input" accept=".set,.chr" multiple onchange="addFiles(this)">
+</div>
+
+<!-- TOOLBAR -->
+<div id="toolbar" style="display:none">
+  <input type="text" id="search" placeholder="Search params…" oninput="applyFilters()">
+  <button class="toggle-btn" id="diff-btn" onclick="toggleDiffOnly()">Show differences only</button>
+  <span id="diff-count"></span>
+</div>
+
+<!-- BATCH TOOLBAR -->
+<div id="batch-toolbar">
+  <span id="batch-label">Batch Edit</span>
+  <div class="sep"></div>
+  <input list="batch-param-list" class="batch-input" id="batch-param"
+    placeholder="Parameter name…" autocomplete="off"
+    oninput="onBatchParamInput()" onchange="onBatchParamInput()"
+    onkeydown="if(event.key==='Enter')batchApply(false)">
+  <datalist id="batch-param-list"></datalist>
+  <input type="text" class="batch-input" id="batch-value" placeholder="New value…"
+    onkeydown="if(event.key==='Enter')batchApply(false)">
+  <select class="batch-input" id="batch-value-bool">
+    <option value="true">true</option>
+    <option value="false">false</option>
+  </select>
+  <button class="btn btn-patch" onclick="batchApply(false)">
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+    Apply to all
+  </button>
+  <label class="dryrun-wrap" title="Simulate without applying changes">
+    <input type="checkbox" id="batch-dryrun"> Dry-run
+  </label>
+</div>
+
+<!-- RECAP PANEL -->
+<div id="recap-panel">
+  <div id="recap-header">
+    <span id="recap-summary"></span>
+    <button class="btn-undo" id="recap-undo-btn" onclick="undoBatch()">↩ Undo</button>
+    <button class="recap-close" onclick="closeRecap()" title="Close">✕</button>
+  </div>
+  <div id="recap-rows"></div>
+</div>
+
+<!-- DROP ZONE -->
+<div id="dropzone">
+  <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+    <polyline points="14,2 14,8 20,8"/>
+    <line x1="12" y1="18" x2="12" y2="12"/>
+    <line x1="9" y1="15" x2="15" y2="15"/>
+  </svg>
+  <h2>Drop .set or .chr files here</h2>
+  <p>or click to choose files — open multiple files to compare &amp; edit side by side</p>
+  <button class="btn btn-accent" style="margin-top:4px" onclick="document.getElementById('file-input').click()">Choose Files</button>
+</div>
+
+<!-- TABLE -->
+<div id="table-wrap">
+  <table id="main-table">
+    <thead id="table-head"><tr><th><div class="th-inner"><span style="color:var(--text-dim);font-size:11px">PARAMETER</span></div></th></tr></thead>
+    <tbody id="table-body"></tbody>
+  </table>
+  <div id="no-diff">No differences found — all values are identical across files</div>
+</div>
+
+<script>
+// ── STATE ────────────────────────────────────────────────
+const files = [];      // { id, name, buffer, parsedLines, paramMap }
+const loadingNames = new Set(); // track files currently being read
+let diffOnly = false;
+let totalChanges = 0;
+
+// ── FILE LOADING ─────────────────────────────────────────
+function addFiles(input) {
+  const list = Array.from(input.files).filter(f =>
+    !files.some(e => e && e.name === f.name) && !loadingNames.has(f.name)
+  );
+  input.value = '';
+  if (list.length === 0) return;
+  list.forEach(f => loadingNames.add(f.name));
+  let pending = list.length;
+  const startIndex = files.length;
+  // Pre-allocate slots to preserve selection order
+  list.forEach((_, i) => files.push(null));
+  list.forEach((file, i) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const buffer = e.target.result;
+      const decoded = decodeBuffer(buffer);
+      const isChr   = file.name.toLowerCase().endsWith('.chr');
+      const parsed  = isChr ? parseChrFile(decoded) : parseSetFile(decoded);
+      const paramMap = buildParamMap(parsed);
+      if (isChr) autoSwitchToProfile = true;
+      files[startIndex + i] = { id: `f${Date.now()}_${Math.random()}`, name: file.name, fileType: isChr ? 'chr' : 'set', buffer, parsed, paramMap, changes: new Set() };
+      loadingNames.delete(file.name);
+      pending--;
+      if (pending === 0) rebuildAll();
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function decodeBuffer(buf) {
+  const b = new Uint8Array(buf);
+  if (b[0] === 0xFF && b[1] === 0xFE) return new TextDecoder('utf-16le').decode(buf);
+  if (b[0] === 0xFE && b[1] === 0xFF) return new TextDecoder('utf-16be').decode(buf);
+  return new TextDecoder('utf-8').decode(buf);
+}
+
+// ── PARSING ──────────────────────────────────────────────
+function parseSetFile(text) {
+  return text.split(/\r?\n/).map((raw, idx) => {
+    const line = raw.trim();
+    if (!line) return { type: 'empty', raw, idx };
+    if (line.startsWith(';')) return { type: 'comment', raw, idx };
+
+    const eq = line.indexOf('=');
+    if (eq === -1) return { type: 'unknown', raw, idx };
+
+    const key = line.slice(0, eq).trim();
+    const rest = line.slice(eq + 1);
+
+    if (rest.includes('||')) {
+      const [value, def, mn, mx, flag] = rest.split('||');
+      if (value.trim().startsWith('---')) {
+        return { type: 'section', raw, idx, key, title: extractTitle(value) };
+      }
+      const isBoolean = (value === 'true' || value === 'false') && mn === '0' && mx === 'true';
+      return { type: 'param', raw, idx, key, value, def, mn, mx, opt: (flag||'').trim().toUpperCase() === 'Y', isBoolean };
+    }
+
+    if (rest.trim().startsWith('---')) {
+      return { type: 'section', raw, idx, key, title: extractTitle(rest) };
+    }
+
+    return { type: 'simple', raw, idx, key, value: rest };
+  });
+}
+
+function extractTitle(s) {
+  return s.trim().replace(/^-+\s*/, '').replace(/\s*-+$/, '').trim();
+}
+
+// ── CHR PARSER ────────────────────────────────────────────
+function parseChrFile(text) {
+  let block = 'chart'; // current structural block
+  return text.split(/\r?\n/).map((raw, idx) => {
+    const line = raw.trim();
+    if (!line) return { type: 'empty', raw, idx, chrBlock: block };
+
+    // XML closing tag  </expert>  → preserved as-is
+    if (line.startsWith('</') && line.endsWith('>'))
+      return { type: 'tag', raw, idx, chrBlock: block };
+
+    // XML opening tag  <inputs>  → section header + update block
+    if (line.startsWith('<') && line.endsWith('>')) {
+      block = line.slice(1, -1).toLowerCase();
+      return { type: 'section', raw, idx, key: `_tag_${line}`, title: block.toUpperCase(), chrBlock: block };
+    }
+
+    const eq = line.indexOf('=');
+    if (eq === -1) return { type: 'unknown', raw, idx, chrBlock: block };
+
+    const key   = line.slice(0, eq).trim();
+    const value = line.slice(eq + 1);
+
+    // Empty key  (the `=` separator lines in trading-hours blocks)
+    if (!key) return { type: 'empty', raw, idx, chrBlock: block };
+
+    // Section separator banner  (key=--- text ---)
+    if (value.trim().match(/^-{3,}/))
+      return { type: 'section', raw, idx, key, title: extractTitle(value) || key, chrBlock: block };
+
+    const isBoolean = value === 'true' || value === 'false';
+    return { type: 'simple', raw, idx, key, value, isBoolean, chrBlock: block };
+  });
+}
+
+function buildParamMap(parsed) {
+  const map = {};
+  parsed.forEach(l => {
+    if ((l.type === 'param' || l.type === 'simple') && !(l.key in map))
+      map[l.key] = l;   // keep first occurrence only
+  });
+  return map;
+}
+
+// ── UNIFIED ROW ORDER ─────────────────────────────────────
+function buildUnifiedRows() {
+  // Use first file as template, then append any extra keys from other files
+  const seen = new Set();
+  const rows = [];
+
+  for (const file of files) {
+    for (const line of file.parsed) {
+      if (line.type === 'section') {
+        const id = 's:' + line.key;
+        if (!seen.has(id)) { seen.add(id); rows.push({ ...line }); }
+      } else if (line.type === 'param' || line.type === 'simple') {
+        if (!seen.has(line.key)) { seen.add(line.key); rows.push({ ...line }); }
+      }
+    }
+  }
+  return rows;
+}
+
+// ── REBUILD ───────────────────────────────────────────────
+function rebuildAll() {
+  // Remove any null slots (shouldn't happen after all readers complete, but safety)
+  const nulls = files.indexOf(null);
+  if (nulls !== -1) return; // still loading, wait for all to finish
+  if (files.length === 0) return;
+
+  document.getElementById('dropzone').style.display = 'none';
+  document.getElementById('table-wrap').style.display = 'block';
+  document.getElementById('toolbar').style.display = 'flex';
+  document.getElementById('batch-toolbar').style.display = 'flex';
+  document.getElementById('save-all-btn').disabled = false;
+  document.getElementById('reset-btn').style.display = 'flex';
+
+  if (autoSwitchToProfile) {
+    currentTab = 'profile';
+    document.querySelectorAll('.tab-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.tab === 'profile')
+    );
+    autoSwitchToProfile = false;
+  }
+
+  buildHeader();
+  buildBody();
+  applyFilters();
+  updateParamDatalist();
+  updateTableHeight();
+}
+
+function buildHeader() {
+  const tr = document.getElementById('table-head').querySelector('tr');
+  // Remove old file columns
+  while (tr.children.length > 1) tr.removeChild(tr.lastChild);
+
+  files.forEach((file, fi) => {
+    const th = document.createElement('th');
+    th.id = `th_${file.id}`;
+    th.innerHTML = `<div class="th-inner">
+      <span class="th-filename" id="fn_${file.id}" title="Click to rename" onclick="startRename('${file.id}')">${file.name}</span>
+      <div class="th-actions">
+        <button class="btn-tiny btn-tiny-save" onclick="saveFile('${file.id}')">Save</button>
+        <button class="btn-tiny btn-tiny-remove" onclick="removeFile('${file.id}')">✕</button>
+        <span class="th-change-count" id="cc_${file.id}" style="display:none"></span>
+      </div>
+    </div>`;
+    tr.appendChild(th);
+  });
+}
+
+function buildBody() {
+  const tbody = document.getElementById('table-body');
+  tbody.innerHTML = '';
+
+  const rows = buildUnifiedRows();
+
+  rows.forEach(row => {
+    if (row.type === 'section') {
+      const tr = document.createElement('tr');
+      tr.className = 'section-row';
+      tr.dataset.section = row.key;
+      tr.dataset.chrBlock = row.chrBlock || '';
+      const td = document.createElement('td');
+      td.colSpan = files.length + 1;
+      td.textContent = row.title || row.key;
+      tr.appendChild(td);
+      tbody.appendChild(tr);
+      return;
+    }
+
+    if (row.type !== 'param' && row.type !== 'simple') return;
+
+    const tr = document.createElement('tr');
+    tr.className = 'param-row';
+    tr.dataset.key = row.key.toLowerCase();
+    tr.id = `row_${row.key}`;
+    tr.dataset.chrBlock = row.chrBlock || '';
+
+    // Label cell
+    const labelTd = document.createElement('td');
+    labelTd.className = 'label-cell';
+    const anyOpt = files.some(f => f.paramMap[row.key]?.opt);
+    labelTd.innerHTML = `<div class="param-name${anyOpt ? ' opt' : ''}">${row.key}</div>`;
+    // Add range hint from first file that has it
+    const firstWithMeta = files.find(f => f.paramMap[row.key]?.mn !== undefined);
+    if (firstWithMeta) {
+      const p = firstWithMeta.paramMap[row.key];
+      if (p.mn && p.mx && !(p.mn === '0' && p.mx === 'true')) {
+        labelTd.innerHTML += `<div class="param-range">${p.mn} – ${p.mx}</div>`;
+      }
+    }
+    tr.appendChild(labelTd);
+
+    // Value cells
+    files.forEach((file, fi) => {
+      const td = document.createElement('td');
+      td.className = 'value-cell';
+      td.dataset.fileId = file.id;
+      td.dataset.key = row.key;
+
+      const paramLine = file.paramMap[row.key];
+      const value = paramLine ? paramLine.value : '';
+      const isBoolean = paramLine?.isBoolean;
+
+      if (isBoolean) {
+        td.innerHTML = `<label class="cell-toggle" title="Click to toggle">
+          <span class="toggle">
+            <input type="checkbox" id="inp_${file.id}_${row.key}" ${value === 'true' ? 'checked' : ''}
+              onchange="onCellChange('${file.id}','${row.key}',this)">
+            <span class="toggle-slider"></span>
+          </span>
+          <span class="toggle-val" id="lbl_${file.id}_${row.key}">${value}</span>
+        </label>`;
+      } else {
+        td.innerHTML = `<input class="cell-input" id="inp_${file.id}_${row.key}"
+          value="${escHtml(value)}" spellcheck="false"
+          oninput="onCellChange('${file.id}','${row.key}',this)">`;
+      }
+
+      tr.appendChild(td);
+    });
+
+    tbody.appendChild(tr);
+  });
+
+  updateDiffHighlight();
+}
+
+function escHtml(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+}
+
+// ── DIFF HIGHLIGHT ────────────────────────────────────────
+function updateDiffHighlight() {
+  let diffRows = 0;
+  document.querySelectorAll('.param-row').forEach(tr => {
+    const key = tr.dataset.key;
+    const cells = tr.querySelectorAll('.value-cell');
+    const values = [];
+    cells.forEach(td => {
+      const inp = td.querySelector('input[type=checkbox]');
+      if (inp) values.push(String(inp.checked));
+      else {
+        const txt = td.querySelector('input.cell-input');
+        values.push(txt ? txt.value : '');
+      }
+    });
+    const allSame = values.length > 1 && values.every(v => v === values[0]);
+    if (!allSame && values.length > 1) diffRows++;
+
+    cells.forEach((td, i) => {
+      if (!td.classList.contains('modified-cell')) {
+        td.classList.toggle('diff-cell', !allSame && values.length > 1);
+      }
+    });
+    tr.dataset.hasDiff = (!allSame && values.length > 1) ? '1' : '0';
+  });
+
+  const el = document.getElementById('diff-count');
+  el.textContent = `${diffRows} param${diffRows !== 1 ? 's' : ''} differ`;
+  return diffRows;
+}
+
+// ── CELL CHANGE ───────────────────────────────────────────
+function onCellChange(fileId, key, el) {
+  const file = files.find(f => f.id === fileId);
+  if (!file) return;
+
+  // Update label for boolean
+  const lbl = document.getElementById(`lbl_${fileId}_${key}`);
+  if (lbl) lbl.textContent = el.checked ? 'true' : 'false';
+
+  const inputEl = document.getElementById(`inp_${fileId}_${key}`);
+  if (inputEl) inputEl.classList.add('modified');
+
+  const td = inputEl?.closest('td') || el.closest('td');
+  if (td) { td.classList.remove('diff-cell'); td.classList.add('modified-cell'); }
+
+  file.changes.add(key);
+  totalChanges++;
+
+  const ccEl = document.getElementById(`cc_${fileId}`);
+  if (ccEl) {
+    ccEl.textContent = `${file.changes.size} change${file.changes.size !== 1 ? 's' : ''}`;
+    ccEl.style.display = 'inline';
+  }
+
+  updateChangesBadge();
+  updateDiffHighlight();
+}
+
+function updateChangesBadge() {
+  const total = files.reduce((s, f) => s + f.changes.size, 0);
+  const el = document.getElementById('changes-badge');
+  if (total > 0) {
+    el.textContent = `${total} change${total !== 1 ? 's' : ''}`;
+    el.style.display = 'inline';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+// ── FILTERS ───────────────────────────────────────────────
+function applyFilters() {
+  const q = document.getElementById('search').value.toLowerCase();
+  let visibleDiff = 0;
+
+  // Section rows: hide chr non-inputs blocks in Set Editor tab
+  document.querySelectorAll('.section-row').forEach(tr => {
+    const cb = tr.dataset.chrBlock || '';
+    tr.classList.toggle('hidden', isChrNonInputsBlock(cb));
+  });
+
+  document.querySelectorAll('.param-row').forEach(tr => {
+    const cb = tr.dataset.chrBlock || '';
+    if (isChrNonInputsBlock(cb)) { tr.classList.add('hidden'); return; }
+
+    const key = tr.dataset.key || '';
+    const matchSearch = !q || key.includes(q);
+    const matchDiff = !diffOnly || tr.dataset.hasDiff === '1';
+    const show = matchSearch && matchDiff;
+    tr.classList.toggle('hidden', !show);
+    if (show && tr.dataset.hasDiff === '1') visibleDiff++;
+  });
+
+  document.getElementById('no-diff').style.display =
+    diffOnly && visibleDiff === 0 ? 'block' : 'none';
+}
+
+// Returns true when a chrBlock should be hidden in the current tab
+function isChrNonInputsBlock(block) {
+  if (!block || block === 'inputs') return false;          // inputs / .set rows → always visible
+  return currentTab === 'set';                             // hide in Set Editor, show in Profile Creator
+}
+
+function toggleDiffOnly() {
+  diffOnly = !diffOnly;
+  document.getElementById('diff-btn').classList.toggle('active', diffOnly);
+  applyFilters();
+}
+
+// ── RENAME FILE ───────────────────────────────────────────
+function startRename(id) {
+  const span = document.getElementById(`fn_${id}`);
+  if (!span || span.querySelector('input')) return;
+  const file = files.find(f => f.id === id);
+  if (!file) return;
+
+  const input = document.createElement('textarea');
+  input.className = 'th-filename-input';
+  input.value = file.name;
+  input.onclick = e => e.stopPropagation();
+  input.onblur = () => commitRename(id, input.value);
+  input.onkeydown = e => {
+    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+    if (e.key === 'Escape') { input.value = file.name; input.blur(); }
+  };
+
+  span.textContent = '';
+  span.appendChild(input);
+  input.focus();
+  input.select();
+}
+
+function commitRename(id, newName) {
+  const file = files.find(f => f.id === id);
+  if (!file) return;
+  const trimmed = newName.trim();
+  const name = trimmed || file.name;
+  file.name = name;
+
+  const span = document.getElementById(`fn_${id}`);
+  if (span) {
+    span.textContent = name;
+    span.title = name;
+  }
+}
+
+// ── RESET ALL ─────────────────────────────────────────────
+function resetAll() {
+  files.length = 0;
+  loadingNames.clear();
+  document.getElementById('table-wrap').style.display = 'none';
+  document.getElementById('toolbar').style.display = 'none';
+  document.getElementById('batch-toolbar').style.display = 'none';
+  document.getElementById('recap-panel').style.display = 'none';
+  document.getElementById('dropzone').style.display = 'flex';
+  document.getElementById('save-all-btn').disabled = true;
+  document.getElementById('reset-btn').style.display = 'none';
+  document.getElementById('changes-badge').style.display = 'none';
+  lastBatchSnapshot = null;
+}
+
+// ── REMOVE FILE ───────────────────────────────────────────
+function removeFile(id) {
+  const idx = files.findIndex(f => f.id === id);
+  if (idx === -1) return;
+  files.splice(idx, 1);
+  if (files.length === 0) {
+    document.getElementById('table-wrap').style.display = 'none';
+    document.getElementById('toolbar').style.display = 'none';
+    document.getElementById('batch-toolbar').style.display = 'none';
+    document.getElementById('recap-panel').style.display = 'none';
+    document.getElementById('dropzone').style.display = 'flex';
+    document.getElementById('save-all-btn').disabled = true;
+    document.getElementById('changes-badge').style.display = 'none';
+    lastBatchSnapshot = null;
+  } else {
+    rebuildAll();
+  }
+}
+
+// ── SAVE ─────────────────────────────────────────────────
+function collectFileContent(file) {
+  const written = new Set();
+  return file.parsed.map(line => {
+    if (line.type === 'param') {
+      const inp = document.getElementById(`inp_${file.id}_${line.key}`);
+      if (!inp) return line.raw;
+      const val = inp.type === 'checkbox' ? (inp.checked ? 'true' : 'false') : inp.value;
+      return `${line.key}=${val}||${line.def}||${line.mn}||${line.mx}||${line.opt ? 'Y' : 'N'}`;
+    }
+    if (line.type === 'simple') {
+      // Only update the first occurrence — subsequent duplicates (e.g. <indicator>
+      // block in .chr files sharing keys with <expert>) are preserved as-is.
+      if (written.has(line.key)) return line.raw;
+      const inp = document.getElementById(`inp_${file.id}_${line.key}`);
+      if (!inp) return line.raw;
+      written.add(line.key);
+      const val = inp.type === 'checkbox' ? (inp.checked ? 'true' : 'false') : inp.value;
+      return `${line.key}=${val}`;
+    }
+    return line.raw;
+  }).join('\r\n');
+}
+
+// ── UTF-16 LE ENCODER ────────────────────────────────────
+function buildFileBytes(text) {
+  const bom = new Uint8Array([0xFF, 0xFE]);
+  const utf16 = new Uint8Array(text.length * 2);
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i);
+    utf16[i * 2]     = c & 0xFF;
+    utf16[i * 2 + 1] = (c >> 8) & 0xFF;
+  }
+  const buf = new Uint8Array(bom.length + utf16.length);
+  buf.set(bom); buf.set(utf16, bom.length);
+  return buf;
+}
+
+function downloadAsUtf16(filename, text) {
+  const blob = new Blob([buildFileBytes(text)], { type: 'application/octet-stream' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function saveFile(id) {
+  const file = files.find(f => f.id === id);
+  if (!file) return;
+  downloadAsUtf16(file.name, collectFileContent(file));
+  file.changes.clear();
+  const cc = document.getElementById(`cc_${id}`);
+  if (cc) cc.style.display = 'none';
+  updateChangesBadge();
+}
+
+// ── ZIP WRITER ────────────────────────────────────────────
+(function () {
+  const _t = new Uint32Array(256);
+  for (let i = 0; i < 256; i++) {
+    let c = i;
+    for (let j = 0; j < 8; j++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    _t[i] = c;
+  }
+  window._crc32 = bytes => {
+    let c = 0xFFFFFFFF;
+    for (let i = 0; i < bytes.length; i++) c = _t[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+    return (c ^ 0xFFFFFFFF) >>> 0;
+  };
+})();
+
+function buildZip(entries) {
+  // entries: [{name: string, data: Uint8Array}]
+  const enc = new TextEncoder();
+  const w16 = (v, o, n) => v.setUint16(o, n, true);
+  const w32 = (v, o, n) => v.setUint32(o, n, true);
+
+  const now  = new Date();
+  const time = ((now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1));
+  const date = (((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate());
+
+  const locals = [];
+  let offset = 0;
+
+  for (const { name, data } of entries) {
+    const nb  = enc.encode(name);
+    const crc = window._crc32(data);
+    const lh  = new Uint8Array(30 + nb.length);
+    const lv  = new DataView(lh.buffer);
+    lh[0]=0x50; lh[1]=0x4B; lh[2]=0x03; lh[3]=0x04;
+    w16(lv, 4, 20); w16(lv, 6, 0); w16(lv, 8, 0);
+    w16(lv, 10, time); w16(lv, 12, date);
+    w32(lv, 14, crc); w32(lv, 18, data.length); w32(lv, 22, data.length);
+    w16(lv, 26, nb.length); w16(lv, 28, 0);
+    lh.set(nb, 30);
+    locals.push({ lh, data, crc, nb, offset });
+    offset += lh.length + data.length;
+  }
+
+  const cds = locals.map(e => {
+    const cd = new Uint8Array(46 + e.nb.length);
+    const cv = new DataView(cd.buffer);
+    cd[0]=0x50; cd[1]=0x4B; cd[2]=0x01; cd[3]=0x02;
+    w16(cv, 4, 20); w16(cv, 6, 20); w16(cv, 8, 0); w16(cv, 10, 0);
+    w16(cv, 12, e.lh[10] | (e.lh[11] << 8)); // time (already LE)
+    w16(cv, 14, e.lh[12] | (e.lh[13] << 8)); // date
+    w32(cv, 16, e.crc); w32(cv, 20, e.data.length); w32(cv, 24, e.data.length);
+    w16(cv, 28, e.nb.length); w16(cv, 30, 0); w16(cv, 32, 0);
+    w16(cv, 34, 0); w16(cv, 36, 0); w32(cv, 38, 0); w32(cv, 42, e.offset);
+    cd.set(e.nb, 46);
+    return cd;
+  });
+
+  const cdSize = cds.reduce((s, c) => s + c.length, 0);
+  const eocd = new Uint8Array(22);
+  const ev = new DataView(eocd.buffer);
+  eocd[0]=0x50; eocd[1]=0x4B; eocd[2]=0x05; eocd[3]=0x06;
+  w16(ev, 4, 0); w16(ev, 6, 0);
+  w16(ev, 8, locals.length); w16(ev, 10, locals.length);
+  w32(ev, 12, cdSize); w32(ev, 16, offset); w16(ev, 20, 0);
+
+  const out = new Uint8Array(offset + cdSize + 22);
+  let pos = 0;
+  locals.forEach(e => { out.set(e.lh, pos); pos += e.lh.length; out.set(e.data, pos); pos += e.data.length; });
+  cds.forEach(c => { out.set(c, pos); pos += c.length; });
+  out.set(eocd, pos);
+  return out;
+}
+
+function saveAll() {
+  if (files.length === 1) { saveFile(files[0].id); return; }
+
+  const entries = files.map(f => ({ name: f.name, data: buildFileBytes(collectFileContent(f)) }));
+  const zip     = buildZip(entries);
+  const blob    = new Blob([zip], { type: 'application/zip' });
+  const a       = document.createElement('a');
+  a.href        = URL.createObjectURL(blob);
+  a.download    = 'setfiles.zip';
+  a.click();
+  URL.revokeObjectURL(a.href);
+
+  // mark all files as saved
+  files.forEach(f => {
+    f.changes.clear();
+    const cc = document.getElementById(`cc_${f.id}`);
+    if (cc) cc.style.display = 'none';
+  });
+  updateChangesBadge();
+}
+
+// ── DRAG & DROP ───────────────────────────────────────────
+const dz = document.getElementById('dropzone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault();
+  e.stopPropagation();
+  dz.classList.remove('drag-over');
+  const input = document.getElementById('file-input');
+  // Simulate file selection via DataTransfer
+  const dt = new DataTransfer();
+  Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.set') || f.name.endsWith('.chr')).forEach(f => dt.items.add(f));
+  if (dt.files.length > 0) {
+    input.files = dt.files;
+    addFiles(input);
+  }
+});
+
+// Allow dragging onto the table too
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => {
+  e.preventDefault();
+  const setFiles = Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.set') || f.name.endsWith('.chr'));
+  if (setFiles.length === 0) return;
+  const dt = new DataTransfer();
+  setFiles.forEach(f => dt.items.add(f));
+  const input = document.getElementById('file-input');
+  input.files = dt.files;
+  addFiles(input);
+});
+
+// ── BATCH PATCH ───────────────────────────────────────────
+let lastBatchSnapshot = null;
+
+function updateParamDatalist() {
+  const dl = document.getElementById('batch-param-list');
+  dl.innerHTML = '';
+  const allKeys = new Set();
+  files.forEach(f => Object.keys(f.paramMap).forEach(k => allKeys.add(k)));
+  [...allKeys].sort().forEach(k => {
+    const opt = document.createElement('option');
+    opt.value = k;
+    dl.appendChild(opt);
+  });
+}
+
+function onBatchParamInput() {
+  const name    = document.getElementById('batch-param').value.trim();
+  const valueEl = document.getElementById('batch-value');
+  const boolEl  = document.getElementById('batch-value-bool');
+  const isBool  = files.some(f => f.paramMap[name]?.isBoolean);
+  valueEl.style.display = isBool ? 'none'  : 'block';
+  boolEl.style.display  = isBool ? 'block' : 'none';
+}
+
+function getBatchValue() {
+  const boolEl = document.getElementById('batch-value-bool');
+  return boolEl.style.display !== 'none'
+    ? boolEl.value
+    : document.getElementById('batch-value').value.trim();
+}
+
+function batchApply(forceDryRun) {
+  const paramName = document.getElementById('batch-param').value.trim();
+  const newValue  = getBatchValue();
+  const dryRun    = forceDryRun || document.getElementById('batch-dryrun').checked;
+  if (!paramName || newValue === '') return;
+
+  const results  = [];
+  const snapshot = [];
+  let modifiedCount = 0;
+
+  files.forEach(file => {
+    const paramLine = file.paramMap[paramName];
+    if (!paramLine) {
+      results.push({ file, status: 'absent' });
+      return;
+    }
+
+    const inp = document.getElementById(`inp_${file.id}_${paramName}`);
+    const currentValue = inp
+      ? (inp.type === 'checkbox' ? (inp.checked ? 'true' : 'false') : inp.value)
+      : String(paramLine.value);
+
+    if (currentValue === newValue) {
+      results.push({ file, status: 'same', oldValue: currentValue });
+      return;
+    }
+
+    results.push({ file, status: 'modified', oldValue: currentValue });
+    modifiedCount++;
+
+    if (!dryRun && inp) {
+      snapshot.push({ fileId: file.id, param: paramName, oldValue: currentValue, isCheckbox: inp.type === 'checkbox' });
+      if (inp.type === 'checkbox') {
+        inp.checked = newValue === 'true';
+      } else {
+        inp.value = newValue;
+      }
+      onCellChange(file.id, paramName, inp);
+    }
+  });
+
+  lastBatchSnapshot = (!dryRun && modifiedCount > 0)
+    ? { param: paramName, newValue, changes: snapshot }
+    : null;
+
+  showRecap(paramName, newValue, results, modifiedCount, dryRun);
+}
+
+function showRecap(param, newValue, results, modifiedCount, dryRun) {
+  const panel   = document.getElementById('recap-panel');
+  const summary = document.getElementById('recap-summary');
+  const undoBtn = document.getElementById('recap-undo-btn');
+  const rowsEl  = document.getElementById('recap-rows');
+  const total   = results.length;
+
+  if (dryRun) {
+    summary.className   = 'dry';
+    summary.textContent = `[DRY-RUN]  ${param} → "${newValue}"  —  ${modifiedCount}/${total} file(s) would be modified`;
+  } else if (modifiedCount > 0) {
+    summary.className   = 'ok';
+    summary.textContent = `✓  ${param} → "${newValue}"  —  ${modifiedCount}/${total} file(s) modified`;
+  } else {
+    summary.className   = 'warn';
+    summary.textContent = `${param}  —  no changes (absent or already "${newValue}")`;
+  }
+
+  undoBtn.style.display = (!dryRun && modifiedCount > 0) ? 'inline-block' : 'none';
+
+  rowsEl.innerHTML = '';
+  results.forEach(r => {
+    const div = document.createElement('div');
+    div.className = 'recap-row ' + (r.status === 'modified' ? 'modified' : 'skipped');
+
+    let changeHtml;
+    if (r.status === 'modified') {
+      changeHtml = `<span class="rr-old">${escHtml(r.oldValue)}</span>
+                    <span class="rr-arr">→</span>
+                    <span class="rr-new">${escHtml(newValue)}</span>`;
+    } else if (r.status === 'absent') {
+      changeHtml = `<span class="rr-skip">parameter not found</span>`;
+    } else {
+      changeHtml = `<span class="rr-skip">already "${escHtml(r.oldValue)}"</span>`;
+    }
+
+    const icon = r.status === 'modified' ? (dryRun ? '◎' : '✓')
+               : r.status === 'absent'   ? '–' : '=';
+
+    div.innerHTML = `<span class="rr-icon">${icon}</span>
+                     <span class="rr-file">${escHtml(r.file.name)}</span>
+                     <span class="rr-change">${changeHtml}</span>`;
+    rowsEl.appendChild(div);
+  });
+
+  panel.style.display = 'block';
+  updateTableHeight();
+}
+
+function undoBatch() {
+  if (!lastBatchSnapshot) return;
+  lastBatchSnapshot.changes.forEach(({ fileId, param, oldValue, isCheckbox }) => {
+    const inp = document.getElementById(`inp_${fileId}_${param}`);
+    if (!inp) return;
+    if (isCheckbox) { inp.checked = oldValue === 'true'; }
+    else            { inp.value = oldValue; }
+    onCellChange(fileId, param, inp);
+  });
+  lastBatchSnapshot = null;
+  closeRecap();
+}
+
+function closeRecap() {
+  document.getElementById('recap-panel').style.display = 'none';
+  updateTableHeight();
+}
+
+function updateTableHeight() {
+  requestAnimationFrame(() => {
+    const wrap     = document.getElementById('table-wrap');
+    if (wrap.style.display === 'none') return;
+    const batchBar = document.getElementById('batch-toolbar');
+    const recap    = document.getElementById('recap-panel');
+    let h = 52 + 40;
+    if (batchBar.style.display !== 'none') h += batchBar.offsetHeight;
+    if (recap.style.display    !== 'none') h += recap.offsetHeight;
+    wrap.style.height = `calc(100vh - ${h}px)`;
+  });
+}
+
+// ── TABS ──────────────────────────────────────────────────
+let currentTab = 'set';
+let autoSwitchToProfile = false;
+
+function switchTab(tab) {
+  if (currentTab === tab) return;
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.tab === tab)
+  );
+  applyFilters();
+}
+
+// ── THEME ─────────────────────────────────────────────────
+const SUN_SVG = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`;
+const MOON_SVG = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('seteditor-theme', theme);
+  const btn = document.getElementById('theme-btn');
+  if (btn) {
+    if (theme === 'dark') {
+      btn.innerHTML = SUN_SVG;
+      btn.title = 'Switch to light theme';
+    } else {
+      btn.innerHTML = MOON_SVG;
+      btn.title = 'Switch to dark theme';
+    }
+  }
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme');
+  applyTheme(current === 'dark' ? 'light' : 'dark');
+}
+
+// Initialise au chargement (dark par défaut)
+const _saved  = localStorage.getItem('seteditor-theme');
+const _system = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+applyTheme(_saved || _system);
+</script>
+</body>
+</html>

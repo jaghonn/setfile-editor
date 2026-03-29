@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profile Creator — Documentation</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0d0f18;
+  --surface: #13161f;
+  --surface2: #1a1d2e;
+  --border: #252840;
+  --border2: #2e3258;
+  --text: #c9cdd8;
+  --text-dim: #555a7a;
+  --text-muted: #3a3d55;
+  --accent: #7c6af7;
+  --accent-dim: #2d2860;
+  --gold: #f0b429;
+  --gold-dim: #2a2210;
+  --diff: #e05c5c;
+  --diff-dim: #2a1010;
+  --green: #3ecf8e;
+  --green-dim: #0a2018;
+  --save-border: #1a6644;
+}
+
+[data-theme="light"] {
+  --bg: #f4f5fb;
+  --surface: #ffffff;
+  --surface2: #eceef8;
+  --border: #d5d8ef;
+  --border2: #bec2df;
+  --text: #1a1d2e;
+  --text-dim: #5a5f80;
+  --text-muted: #9a9fba;
+  --accent: #5a4fcf;
+  --accent-dim: #edeafd;
+  --gold: #8a6000;
+  --gold-dim: #fff3cc;
+  --diff: #b03030;
+  --diff-dim: #fce8e8;
+  --green: #1a7a50;
+  --green-dim: #d4f5e8;
+  --save-border: #0a6640;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  transition: background 0.2s, color 0.2s;
+}
+
+/* ── TOPBAR ── */
+#topbar {
+  height: 52px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  position: sticky;
+  top: 0;
+  z-index: 200;
+}
+
+.tab-group { display: flex; align-items: stretch; height: 52px; margin-left: -16px; }
+.tab-btn {
+  padding: 0 18px;
+  height: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.12s;
+  white-space: nowrap;
+  font-family: inherit;
+}
+.tab-btn:hover { color: var(--text); background: var(--surface2); }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+.sep { width: 1px; height: 24px; background: var(--border); margin: 0 4px; flex-shrink: 0; }
+.spacer { flex: 1; }
+
+.btn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.12s;
+  white-space: nowrap;
+  display: flex; align-items: center; gap: 6px;
+  font-family: inherit;
+}
+.btn-ghost { background: transparent; color: var(--text-dim); border-color: var(--border); }
+.btn-ghost:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+.btn-chr { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+.btn-chr:hover { background: var(--accent); color: #fff; }
+.btn-save { background: var(--green-dim); color: var(--green); border-color: var(--save-border); }
+.btn-save:hover { background: var(--green); color: #000; }
+
+.badge { padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; }
+.badge-gold { background: var(--gold-dim); color: var(--gold); }
+
+/* ── PAGE CONTENT ── */
+.page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 48px 24px 80px;
+}
+
+/* ── PAGE TITLE ── */
+.doc-title {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 6px;
+  letter-spacing: -0.5px;
+}
+.doc-subtitle {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-bottom: 48px;
+}
+
+/* ── STEP BLOCKS ── */
+.step {
+  margin-bottom: 56px;
+}
+
+.step-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.step-num {
+  flex-shrink: 0;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--accent-dim);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.step-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.step-body {
+  padding-left: 42px;
+}
+
+.step-body p {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-bottom: 16px;
+  line-height: 1.6;
+}
+
+.step-body a {
+  color: var(--accent);
+  text-decoration: none;
+}
+.step-body a:hover { text-decoration: underline; }
+
+/* ── SCREENSHOT FRAMES ── */
+.screenshot {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 16px 0;
+  font-size: 12px;
+}
+
+.sc-bar {
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  padding: 0 12px;
+  display: flex;
+  align-items: stretch;
+  height: 36px;
+  gap: 8px;
+}
+
+.sc-tab {
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-dim);
+  border-bottom: 2px solid transparent;
+  cursor: default;
+}
+.sc-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+.sc-body { padding: 14px 16px; }
+
+/* Toolbar mock */
+.sc-toolbar {
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mock-input {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-dim);
+  padding: 3px 10px;
+  font-size: 11px;
+  font-family: inherit;
+}
+
+.mock-btn-sm {
+  padding: 3px 10px;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-family: inherit;
+  cursor: default;
+}
+
+.mock-btn-accent {
+  padding: 3px 10px;
+  border-radius: 5px;
+  border: 1px solid var(--accent);
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-size: 11px;
+  font-family: inherit;
+  cursor: default;
+  font-weight: 600;
+  display: flex; align-items: center; gap: 5px;
+}
+
+.mock-btn-save {
+  padding: 3px 10px;
+  border-radius: 5px;
+  border: 1px solid var(--save-border);
+  background: var(--green-dim);
+  color: var(--green);
+  font-size: 11px;
+  font-family: inherit;
+  cursor: default;
+  font-weight: 600;
+  display: flex; align-items: center; gap: 5px;
+}
+
+/* batch toolbar mock */
+.sc-batch {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.batch-label { font-size: 11px; font-weight: 700; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; }
+
+/* ── TABLE PARAM STYLE ── */
+.param-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin: 0;
+}
+.param-table th {
+  background: var(--surface2);
+  border-bottom: 2px solid var(--border2);
+  border-right: 1px solid var(--border);
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.param-table th:first-child { color: var(--text-muted); }
+.param-table td {
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  padding: 7px 12px;
+  color: var(--text-dim);
+  vertical-align: middle;
+}
+.param-table td:first-child {
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface2);
+  width: 160px;
+}
+.param-table td.val-accent { color: var(--accent); font-weight: 600; }
+.param-table td.val-green  { color: var(--green);  }
+.param-table td.val-gold   { color: var(--gold);   }
+.param-table tr:last-child td { border-bottom: none; }
+.param-table tr:hover td { background: rgba(124,106,247,0.04); }
+.param-table tr:hover td:first-child { background: var(--surface2); }
+
+/* ── TIMEFRAME GRID ── */
+.tf-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.tf-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  border-top: 2px solid var(--accent);
+}
+
+.tf-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.tf-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+.tf-key { color: var(--text-dim); font-family: 'Courier New', monospace; }
+.tf-val { color: var(--gold); font-weight: 700; font-family: 'Courier New', monospace; }
+
+/* ── FILE TREE ── */
+.file-tree {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 16px 0;
+  display: grid;
+  grid-template-columns: 200px 1fr;
+}
+
+.tree-left {
+  border-right: 1px solid var(--border);
+  padding: 10px 0;
+  font-size: 12px;
+}
+
+.tree-item {
+  padding: 5px 14px;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: default;
+}
+.tree-item.folder { font-weight: 600; color: var(--text); }
+.tree-item.indent1 { padding-left: 26px; }
+.tree-item.indent2 { padding-left: 38px; }
+.tree-item.active { background: var(--accent-dim); color: var(--accent); }
+
+.tree-right {
+  padding: 10px 0;
+}
+
+.tree-file {
+  display: flex;
+  align-items: center;
+  padding: 6px 14px;
+  font-size: 12px;
+  color: var(--text-dim);
+  gap: 8px;
+  cursor: default;
+}
+.tree-file:hover { background: var(--surface2); }
+
+.file-ico {
+  width: 20px; height: 20px;
+  border-radius: 3px;
+  background: var(--accent-dim);
+  border: 1px solid var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.file-date { margin-left: auto; color: var(--text-muted); font-size: 11px; }
+
+/* ── PROFILE MENU MOCK ── */
+.profile-menu {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  display: inline-block;
+  font-size: 12px;
+  margin: 12px 0;
+  min-width: 200px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+}
+.pm-item {
+  padding: 7px 16px;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--border);
+  cursor: default;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.pm-item:last-child { border-bottom: none; }
+.pm-item:hover { background: var(--surface2); }
+.pm-item.checked { color: var(--text); }
+.pm-item.checked::before { content: '✓'; margin-right: 8px; color: var(--accent); }
+.pm-item.highlighted { background: var(--accent-dim); color: var(--accent); font-weight: 600; }
+.pm-shortcut { font-size: 10px; color: var(--text-muted); }
+
+/* ── MT5 CHARTS MOCK ── */
+.charts-mock {
+  background: #0a0c14;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 16px 0;
+}
+.charts-mock-bar {
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  padding: 6px 12px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.tf-pill {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  cursor: default;
+}
+.tf-pill.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--border);
+}
+.chart-win {
+  background: #0d0f18;
+  padding: 10px;
+  min-height: 85px;
+  position: relative;
+  overflow: hidden;
+}
+.cw-pair { font-size: 11px; font-weight: 700; color: var(--accent); margin-bottom: 3px; }
+.cw-ea { font-size: 10px; color: var(--text-muted); margin-bottom: 2px; }
+.cw-set { font-size: 10px; color: var(--green); }
+.cw-mini-bars {
+  position: absolute;
+  right: 8px; bottom: 8px;
+  display: flex; gap: 2px; align-items: flex-end;
+}
+.mini-bar {
+  width: 3px;
+  border-radius: 1px;
+  background: linear-gradient(to top, var(--accent), var(--accent-dim));
+  opacity: 0.7;
+}
+.chart-tabs {
+  background: var(--surface2);
+  border-top: 1px solid var(--border);
+  padding: 4px 8px;
+  display: flex;
+  gap: 2px;
+}
+.chart-tab-item {
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 10px;
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  cursor: default;
+}
+.chart-tab-item.active { color: var(--accent); border-color: var(--accent); background: var(--accent-dim); }
+
+/* ── TIP BOX ── */
+.tip {
+  background: var(--green-dim);
+  border: 1px solid var(--save-border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--green);
+  margin: 14px 0;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+/* ── BONUS ── */
+.bonus {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--gold);
+  border-radius: 10px;
+  padding: 24px;
+  margin-top: 48px;
+}
+.bonus-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 10px;
+}
+.bonus h3 { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 10px; }
+.bonus p { font-size: 13px; color: var(--text-dim); line-height: 1.6; margin-bottom: 8px; }
+
+.profile-switch {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.ps-pill {
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  background: var(--surface2);
+  cursor: default;
+}
+.ps-pill.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+.ps-arrow { color: var(--text-muted); font-size: 16px; }
+
+/* ── DIVIDER ── */
+hr.doc-hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+
+/* ── FOOTER ── */
+footer {
+  margin-top: 60px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+footer span { font-size: 11px; color: var(--text-muted); }
+footer a { font-size: 12px; color: var(--accent); text-decoration: none; }
+footer a:hover { text-decoration: underline; }
+
+@media (max-width: 580px) {
+  .tf-grid { grid-template-columns: 1fr; }
+  .file-tree { grid-template-columns: 1fr; }
+  .tree-left { border-right: none; border-bottom: 1px solid var(--border); }
+  .charts-grid { grid-template-columns: 1fr; }
+  .step-body { padding-left: 0; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR (miroir de l'app) -->
+<div id="topbar">
+  <div class="tab-group">
+    <button class="tab-btn" onclick="window.location.href='#'">MT5 Set Editor</button>
+    <button class="tab-btn active">Profile Creator</button>
+  </div>
+  <div class="sep"></div>
+  <div class="spacer"></div>
+  <span style="font-size:10px;color:var(--text-muted);margin-right:4px">Documentation</span>
+  <button class="btn btn-ghost" id="theme-btn" onclick="toggleTheme()" title="Switch to light theme" style="padding:6px 10px;"></button>
+</div>
+
+<!-- PAGE -->
+<div class="page">
+
+  <h1 class="doc-title">Profile Creator</h1>
+  <p class="doc-subtitle">Step-by-step guide to generate MT5 chart profiles from your setfiles.</p>
+
+  <!-- STEP 1 -->
+  <div class="step">
+    <div class="step-header">
+      <div class="step-num">1</div>
+      <div class="step-title">Load and edit your setfiles, then choose the Profile Creator</div>
+    </div>
+    <div class="step-body">
+      <p>Open the tool at <a href="https://fxlive.trading/metatrader-setfile-editor.html" target="_blank">fxlive.trading/metatrader-setfile-editor.html</a> or use the local .html file directly. Once your setfiles are loaded and edited in the <strong>MT5 Set Editor</strong> tab, switch to the <strong>Profile Creator</strong> tab.</p>
+
+      <!-- Screenshot 1 : tabs + toolbar -->
+      <div class="screenshot">
+        <div class="sc-bar">
+          <div class="sc-tab">MT5 Set Editor</div>
+          <div class="sc-tab active">Profile Creator</div>
+          <div class="sc-tab" style="color:var(--text-muted);">+</div>
+        </div>
+        <div class="sc-toolbar">
+          <div class="mock-input" style="width:180px;">Search params…</div>
+          <div class="mock-btn-sm">Show diff</div>
+        </div>
+        <div class="sc-batch">
+          <span class="batch-label">Batch Edit</span>
+          <div class="sep" style="height:18px;"></div>
+          <div class="mock-input" style="width:120px;">symbol</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="step">
+    <div class="step-header">
+      <div class="step-num">2</div>
+      <div class="step-title">Enter the symbol as it is used by your broker</div>
+    </div>
+    <div class="step-body">
+      <p>Enter the symbol exactly as your broker displays it (e.g. <code style="font-family:monospace;color:var(--accent);">XAUUSD-ECN</code>). Then configure the timeframe using <code style="font-family:monospace;color:var(--gold);">period_type</code> and <code style="font-family:monospace;color:var(--gold);">period_size</code>.</p>
+
+      <!-- Timeframe reference cards -->
+      <div class="tf-grid">
+        <div class="tf-card">
+          <div class="tf-label">D1</div>
+          <div class="tf-row"><span class="tf-key">period_type</span><span class="tf-val">1</span></div>
+          <div class="tf-row"><span class="tf-key">period_size</span><span class="tf-val">24 <span style="color:var(--text-muted);font-weight:400;">(hours)</span></span></div>
+        </div>
+        <div class="tf-card">
+          <div class="tf-label">H4</div>
+          <div class="tf-row"><span class="tf-key">period_type</span><span class="tf-val">1</span></div>
+          <div class="tf-row"><span class="tf-key">period_size</span><span class="tf-val">4 <span style="color:var(--text-muted);font-weight:400;">(hours)</span></span></div>
+        </div>
+        <div class="tf-card">
+          <div class="tf-label">&lt; 1 Hour</div>
+          <div class="tf-row"><span class="tf-key">period_type</span><span class="tf-val">0</span></div>
+          <div class="tf-row"><span class="tf-key">period_size</span><span class="tf-val">15 <span style="color:var(--text-muted);font-weight:400;">(minutes)</span></span></div>
+        </div>
+      </div>
+
+      <p>Other fields control the visual appearance of the chart.</p>
+
+      <!-- Screenshot 2 : CHART table -->
+      <div class="screenshot">
+        <table class="param-table">
+          <thead>
+            <tr>
+              <th>CHART</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>id</td><td>001</td></tr>
+            <tr><td>symbol</td><td class="val-accent">XAUUSD-ECN</td></tr>
+            <tr><td>description</td><td></td></tr>
+            <tr><td>period_type</td><td>1</td></tr>
+            <tr><td>period_size</td><td>24</td></tr>
+            <tr><td>digits</td><td>2</td></tr>
+            <tr><td>tick size</td><td>0.000000</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div class="step">
+    <div class="step-header">
+      <div class="step-num">3</div>
+      <div class="step-title">Expert information are already prefilled</div>
+    </div>
+    <div class="step-body">
+      <p>The EA name, path and expertmode are automatically populated from your setfile. Verify that the path matches your broker's MT5 installation.</p>
+
+      <!-- Screenshot 3 : EXPERT table -->
+      <div class="screenshot">
+        <table class="param-table">
+          <thead>
+            <tr>
+              <th>EXPERT</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>name</td><td class="val-green">Ultimate Breakout System</td></tr>
+            <tr><td>path</td><td style="font-size:11px;">Experts\Market\Ultimate Breakout System.</td></tr>
+            <tr><td>expertmode</td><td>1</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 4 -->
+  <div class="step">
+    <div class="step-header">
+      <div class="step-num">4</div>
+      <div class="step-title">Don't forget to check if all the other parameters are correct</div>
+    </div>
+    <div class="step-body">
+      <p>Review every parameter in the inputs section before saving. Use <strong>Show differences only</strong> to quickly spot any values that differ from your reference setfile.</p>
+    </div>
+  </div>
+
+  <!-- STEP 5 -->
+  <div class="step">
+    <div class="step-header">
+      <div class="step-num">5</div>
+      <div class="step-title">Click on the « Save All .chr »</div>
+    </div>
+    <div class="step-body">
+      <p>Once everything is verified, click <strong>Save All .chr</strong>. A zip file is generated containing all your profile chart files.</p>
+
+      <img src="assets/imgs/profile-creator/profile-creator-doc-05.png" alt="Profile Creator – Save All .chr" style="width:100%;border-radius:8px;margin:16px 0;display:block;border:1px solid var(--border);">
+      <div class="tip">
+        <span>📦</span>
+        <span>You obtain a <strong>zip file</strong> with all the profile <code style="font-family:monospace">.chr</code> files in it.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 6 -->
+  <div class="step">
+    <div class="step-header">
+      <div class="step-num">6</div>
+      <div class="step-title">Copy those files in a specific folder in the <code style="font-family:monospace;font-size:13px;">/MQL5/Profiles/Charts</code></div>
+    </div>
+    <div class="step-body">
+      <p>Extract the zip and place all <code style="font-family:monospace;color:var(--gold);">.chr</code> files inside a dedicated subfolder in your MT5 data directory.</p>
+      <img src="assets/imgs/profile-creator/profile-creator-doc-06.png" alt="Profile Creator – MQL5 Profiles folder" style="width:100%;border-radius:8px;margin:16px 0;display:block;border:1px solid var(--border);">
+    </div>
+  </div>
+
+  <!-- STEP 7 -->
+  <div class="step">
+    <div class="step-header">
+      <div class="step-num">7</div>
+      <div class="step-title">If it's a new folder, you have to restart MT5 then load the profile in MT5</div>
+    </div>
+    <div class="step-body">
+      <p>MT5 must be restarted once for new profile folders to appear in the list. Then navigate to <strong>File → Profiles</strong> and select your profile.</p>
+      <img src="assets/imgs/profile-creator/profile-creator-doc-07.png" alt="Profile Creator – Load profile in MT5" style="width:100%;border-radius:8px;margin:16px 0;display:block;border:1px solid var(--border);">
+
+
+    </div>
+  </div>
+
+  <!-- STEP 8 -->
+  <div class="step">
+    <div class="step-header">
+      <div class="step-num">8</div>
+      <div class="step-title">All charts with working instances of UBS with specific setfiles are loaded and ready to trade</div>
+    </div>
+    <div class="step-body">
+      <p>MT5 opens all charts simultaneously, each running its own EA instance with its dedicated setfile configuration.</p>
+      <img src="assets/imgs/profile-creator/profile-creator-doc-08.png" alt="Profile Creator – Charts loaded in MT5" style="width:100%;border-radius:8px;margin:16px 0;display:block;border:1px solid var(--border);">
+
+
+    </div>
+  </div>
+
+  <!-- BONUS -->
+  <div class="bonus">
+    <div class="bonus-label">✦ Bonus</div>
+    <h3>Quick profile switching</h3>
+    <p>You can switch to the <strong>Default</strong> profile to close all chart windows in one click.</p>
+    <p>Then reload your custom profile after any setfile modification to quickly test your changes without manually reopening each chart.</p>
+    <img src="assets/imgs/profile-creator/profile-creator-doc-bonus1.png" alt="Profile Creator – Switch to Default profile" style="width:100%;border-radius:8px;margin:16px 0;display:block;border:1px solid var(--border);">
+    <img src="assets/imgs/profile-creator/profile-creator-doc-bonus2.png" alt="Profile Creator – Default profile" style="width:100%;border-radius:8px;margin:16px 0;display:block;border:1px solid var(--border);">
+  </div>
+
+  <footer>
+    <a href="https://fxlive.trading/metatrader-setfile-editor.html" target="_blank">→ Open the tool</a>
+    <span>Profile Creator · Documentation</span>
+  </footer>
+
+</div>
+
+<script>
+const SUN_SVG  = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`;
+const MOON_SVG = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('seteditor-theme', theme);
+  const btn = document.getElementById('theme-btn');
+  if (btn) {
+    btn.innerHTML = theme === 'dark' ? SUN_SVG : MOON_SVG;
+    btn.title = theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme';
+  }
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme');
+  applyTheme(current === 'dark' ? 'light' : 'dark');
+}
+
+// Init
+const saved  = localStorage.getItem('seteditor-theme');
+const system = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+applyTheme(saved || system);
+</script>
+</body>
+</html>

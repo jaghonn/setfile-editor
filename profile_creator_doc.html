@@ -526,13 +526,17 @@ footer a:hover { text-decoration: underline; }
 </div>
 
 <script>
-// Sync theme with parent app via shared localStorage key
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
 }
+// Initial theme: use parent's stored preference, fallback to system
 const saved  = localStorage.getItem('seteditor-theme');
 const system = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
 applyTheme(saved || system);
+// Live sync: react to theme toggle in parent app
+window.addEventListener('message', function(e) {
+  if (e.data && e.data.type === 'theme') applyTheme(e.data.value);
+});
 </script>
 </body>
 </html>

@@ -92,10 +92,23 @@ body {
 .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
 .tab-btn[data-tab="set"].active    { color: var(--green);  border-bottom-color: var(--green); }
 .tab-btn[data-tab="profile"].active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-btn[data-tab="docs"]          { color: var(--text-muted); font-size: 12px; }
+.tab-btn[data-tab="docs"]:hover    { color: var(--text); background: var(--surface2); }
+.tab-btn[data-tab="docs"].active   { color: var(--text-dim); border-bottom-color: var(--text-dim); }
 
 /* Show/hide save buttons per active tab */
 body.tab-set     .btn-tab-chr { display: none !important; }
 body.tab-profile .btn-tab-set { display: none !important; }
+body.tab-docs    .btn-tab-set,
+body.tab-docs    .btn-tab-chr { display: none !important; }
+
+/* Doc iframe */
+#doc-frame {
+  display: none;
+  width: 100%;
+  height: calc(100vh - 52px);
+  border: none;
+}
 
 /* ── HEADER ─────────────────────────────────────────── */
 #topbar {
@@ -603,6 +616,8 @@ td.diff-cell .toggle-val { color: var(--diff); }
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
     Save All .chr
   </button>
+  <div class="sep"></div>
+  <button class="tab-btn" data-tab="docs" onclick="switchTab('docs')">📖 Docs</button>
   <div class="spacer"></div>
   <span class="badge badge-gold" id="changes-badge" style="display:none">0 changes</span>
   <span style="font-size:10px;color:var(--text-muted);margin-right:4px">v5.94</span>
@@ -654,6 +669,9 @@ td.diff-cell .toggle-val { color: var(--diff); }
   </div>
   <div id="recap-rows"></div>
 </div>
+
+<!-- DOC IFRAME -->
+<iframe id="doc-frame" src="profile_creator_doc.html" title="Profile Creator Documentation"></iframe>
 
 <!-- DROP ZONE -->
 <div id="dropzone">
@@ -1644,12 +1662,47 @@ let autoSwitchToProfile = false;
 
 function switchTab(tab) {
   if (currentTab === tab) return;
+  const prevTab = currentTab;
   currentTab = tab;
+
   document.querySelectorAll('.tab-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.tab === tab)
   );
   document.body.classList.toggle('tab-set',     tab === 'set');
   document.body.classList.toggle('tab-profile', tab === 'profile');
+  document.body.classList.toggle('tab-docs',    tab === 'docs');
+
+  const docFrame   = document.getElementById('doc-frame');
+  const toolbar    = document.getElementById('toolbar');
+  const batchBar   = document.getElementById('batch-toolbar');
+  const recapPanel = document.getElementById('recap-panel');
+  const tableWrap  = document.getElementById('table-wrap');
+  const dropzone   = document.getElementById('dropzone');
+
+  if (tab === 'docs') {
+    // Hide all editor UI, show iframe full-height
+    toolbar.style.display    = 'none';
+    batchBar.style.display   = 'none';
+    recapPanel.style.display = 'none';
+    tableWrap.style.display  = 'none';
+    dropzone.style.display   = 'none';
+    docFrame.style.display   = 'block';
+    return;
+  }
+
+  // Returning from docs: restore editor chrome
+  if (prevTab === 'docs') {
+    docFrame.style.display = 'none';
+    if (files.length > 0) {
+      tableWrap.style.display = 'block';
+      toolbar.style.display   = 'flex';
+      batchBar.style.display  = 'flex';
+    } else {
+      dropzone.style.display = 'flex';
+    }
+    updateTableHeight();
+  }
+
   if (files.length === 0) return;
 
   // Only rebuild DOM when switching to Profile Creator for the first time

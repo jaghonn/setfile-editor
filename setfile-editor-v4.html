@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MT5 Set File Editor</title>
+<title>Metatrader Set File Editor | Profile Creator</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -92,10 +92,23 @@ body {
 .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
 .tab-btn[data-tab="set"].active    { color: var(--green);  border-bottom-color: var(--green); }
 .tab-btn[data-tab="profile"].active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-btn[data-tab="docs"]          { color: var(--text-muted); font-size: 12px; }
+.tab-btn[data-tab="docs"]:hover    { color: var(--text); background: var(--surface2); }
+.tab-btn[data-tab="docs"].active   { color: var(--text-dim); border-bottom-color: var(--text-dim); }
 
 /* Show/hide save buttons per active tab */
 body.tab-set     .btn-tab-chr { display: none !important; }
 body.tab-profile .btn-tab-set { display: none !important; }
+body.tab-docs    .btn-tab-set,
+body.tab-docs    .btn-tab-chr { display: none !important; }
+
+/* Doc iframe */
+#doc-frame {
+  display: none;
+  width: 100%;
+  height: calc(100vh - 52px);
+  border: none;
+}
 
 /* ── HEADER ─────────────────────────────────────────── */
 #topbar {
@@ -603,9 +616,11 @@ td.diff-cell .toggle-val { color: var(--diff); }
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
     Save All .chr
   </button>
+  <div class="sep"></div>
+  <button class="tab-btn" data-tab="docs" onclick="switchTab('docs')">📖 Docs</button>
   <div class="spacer"></div>
   <span class="badge badge-gold" id="changes-badge" style="display:none">0 changes</span>
-  <span style="font-size:10px;color:var(--text-muted);margin-right:4px">v5.91</span>
+  <span style="font-size:10px;color:var(--text-muted);margin-right:4px">v5.95</span>
   <div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end">
     <span style="font-size:10px;color:var(--text-muted)">Created by <a href="https://t.me/basa2021" target="_blank" style="color:var(--text-dim);text-decoration:none;">t.me/basa2021</a></span>
     <span style="font-size:10px;color:var(--text-muted)">Modified by <a href="https://t.me/Jaghonn" target="_blank" style="color:var(--text-dim);text-decoration:none;">t.me/Jaghonn</a></span>
@@ -655,6 +670,9 @@ td.diff-cell .toggle-val { color: var(--diff); }
   <div id="recap-rows"></div>
 </div>
 
+<!-- DOC IFRAME -->
+<iframe id="doc-frame" src="profile_creator_doc.html" title="Profile Creator Documentation"></iframe>
+
 <!-- DROP ZONE -->
 <div id="dropzone">
   <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
@@ -686,10 +704,31 @@ let totalChanges = 0;
 
 // ── FILE LOADING ─────────────────────────────────────────
 function addFiles(input) {
-  const list = Array.from(input.files).filter(f =>
+  const incoming = Array.from(input.files);
+  input.value = '';
+  if (incoming.length === 0) return;
+
+  // Detect types in the batch being added
+  const incomingHasSet = incoming.some(f => f.name.toLowerCase().endsWith('.set'));
+  const incomingHasChr = incoming.some(f => f.name.toLowerCase().endsWith('.chr'));
+
+  // Reject mixed batches
+  if (incomingHasSet && incomingHasChr) {
+    alert('Please load only .set files OR only .chr files — not both at the same time.');
+    return;
+  }
+
+  // Reject if incoming type conflicts with already-loaded files
+  const loadedType = files.find(f => f)?.fileType;
+  const incomingType = incomingHasChr ? 'chr' : 'set';
+  if (loadedType && loadedType !== incomingType) {
+    alert(`You already have .${loadedType} files loaded.\nPlease reset before loading .${incomingType} files.`);
+    return;
+  }
+
+  const list = incoming.filter(f =>
     !files.some(e => e && e.name === f.name) && !loadingNames.has(f.name)
   );
-  input.value = '';
   if (list.length === 0) return;
   list.forEach(f => loadingNames.add(f.name));
   let pending = list.length;
@@ -855,6 +894,8 @@ function rebuildAll() {
     document.querySelectorAll('.tab-btn').forEach(b =>
       b.classList.toggle('active', b.dataset.tab === 'profile')
     );
+    document.body.classList.remove('tab-set');
+    document.body.classList.add('tab-profile');
     autoSwitchToProfile = false;
   }
 
@@ -1152,6 +1193,22 @@ function removeFile(id) {
 
 // ── SAVE ─────────────────────────────────────────────────
 function collectFileContent(file) {
+  // .chr saved as .set → only extract the <inputs> block lines
+  if (file.fileType === 'chr') {
+    const written = new Set();
+    const lines = [];
+    file.parsed.forEach(line => {
+      if (line.type !== 'simple' || line.chrBlock !== 'inputs') return;
+      if (written.has(line.key)) return;
+      written.add(line.key);
+      const inp = document.getElementById(`inp_${file.id}_${line.key}`);
+      if (!inp) { lines.push(line.raw); return; }
+      const val = inp.type === 'checkbox' ? (inp.checked ? 'true' : 'false') : inp.value;
+      lines.push(`${line.key}=${val}`);
+    });
+    return lines.join('\r\n');
+  }
+  // .set → normal behaviour
   const written = new Set();
   return file.parsed.map(line => {
     if (line.type === 'param') {
@@ -1161,8 +1218,6 @@ function collectFileContent(file) {
       return `${line.key}=${val}||${line.def}||${line.mn}||${line.mx}||${line.opt ? 'Y' : 'N'}`;
     }
     if (line.type === 'simple') {
-      // Only update the first occurrence — subsequent duplicates (e.g. <indicator>
-      // block in .chr files sharing keys with <expert>) are preserved as-is.
       if (written.has(line.key)) return line.raw;
       const inp = document.getElementById(`inp_${file.id}_${line.key}`);
       if (!inp) return line.raw;
@@ -1269,10 +1324,15 @@ function downloadAsUtf16(filename, text) {
   URL.revokeObjectURL(a.href);
 }
 
+function setFilename(name) {
+  return name.replace(/\.[^.]+$/, '') + '.set';
+}
+
 function saveFile(id) {
   const file = files.find(f => f.id === id);
   if (!file) return;
-  downloadAsUtf16(file.name, collectFileContent(file));
+  const outName = file.fileType === 'chr' ? setFilename(file.name) : file.name;
+  downloadAsUtf16(outName, collectFileContent(file));
   file.changes.clear();
   const cc = document.getElementById(`cc_${id}`);
   if (cc) cc.style.display = 'none';
@@ -1355,7 +1415,7 @@ function buildZip(entries) {
 function saveAll() {
   if (files.length === 1) { saveFile(files[0].id); return; }
 
-  const entries = files.map(f => ({ name: f.name, data: buildFileBytes(collectFileContent(f)) }));
+  const entries = files.map(f => ({ name: f.fileType === 'chr' ? setFilename(f.name) : f.name, data: buildFileBytes(collectFileContent(f)) }));
   const zip     = buildZip(entries);
   const blob    = new Blob([zip], { type: 'application/zip' });
   const a       = document.createElement('a');
@@ -1602,12 +1662,47 @@ let autoSwitchToProfile = false;
 
 function switchTab(tab) {
   if (currentTab === tab) return;
+  const prevTab = currentTab;
   currentTab = tab;
+
   document.querySelectorAll('.tab-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.tab === tab)
   );
   document.body.classList.toggle('tab-set',     tab === 'set');
   document.body.classList.toggle('tab-profile', tab === 'profile');
+  document.body.classList.toggle('tab-docs',    tab === 'docs');
+
+  const docFrame   = document.getElementById('doc-frame');
+  const toolbar    = document.getElementById('toolbar');
+  const batchBar   = document.getElementById('batch-toolbar');
+  const recapPanel = document.getElementById('recap-panel');
+  const tableWrap  = document.getElementById('table-wrap');
+  const dropzone   = document.getElementById('dropzone');
+
+  if (tab === 'docs') {
+    // Hide all editor UI, show iframe full-height
+    toolbar.style.display    = 'none';
+    batchBar.style.display   = 'none';
+    recapPanel.style.display = 'none';
+    tableWrap.style.display  = 'none';
+    dropzone.style.display   = 'none';
+    docFrame.style.display   = 'block';
+    return;
+  }
+
+  // Returning from docs: restore editor chrome
+  if (prevTab === 'docs') {
+    docFrame.style.display = 'none';
+    if (files.length > 0) {
+      tableWrap.style.display = 'block';
+      toolbar.style.display   = 'flex';
+      batchBar.style.display  = 'flex';
+    } else {
+      dropzone.style.display = 'flex';
+    }
+    updateTableHeight();
+  }
+
   if (files.length === 0) return;
 
   // Only rebuild DOM when switching to Profile Creator for the first time
@@ -1640,6 +1735,11 @@ function applyTheme(theme) {
       btn.innerHTML = MOON_SVG;
       btn.title = 'Switch to dark theme';
     }
+  }
+  // Notify doc iframe so it syncs theme without a reload
+  const frame = document.getElementById('doc-frame');
+  if (frame && frame.contentWindow) {
+    frame.contentWindow.postMessage({ type: 'theme', value: theme }, '*');
   }
 }
 
